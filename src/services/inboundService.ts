@@ -94,7 +94,7 @@ export async function updateConversation(
 ): Promise<Conversation> {
   const { data, error } = await supabase
     .from("conversations")
-    .update({ ...patch, last_message_at: new Date().toISOString() })
+    .update({ ...(patch as any), last_message_at: new Date().toISOString() })
     .eq("id", conversationId)
     .select("*")
     .single();
