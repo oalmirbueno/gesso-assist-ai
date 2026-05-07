@@ -460,13 +460,18 @@ function Inbox() {
           </div>
 
           <div className="border-t bg-card p-3 space-y-2">
-            <div className="flex gap-2">
-              <Button size="sm" variant="outline" className="text-xs">
-                <Sparkles className="h-3.5 w-3.5 mr-1" /> Gerar resposta com IA
-              </Button>
-              <Button size="sm" variant="outline" className="text-xs">
-                <CornerDownLeft className="h-3.5 w-3.5 mr-1" /> Usar rascunho da IA
-              </Button>
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[11px] text-muted-foreground">
+                Mensagens humanas são enviadas pelo n8n → WhatsApp Cloud API.
+              </p>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" className="text-xs" disabled={busy} onClick={handleGerarRascunho}>
+                  <Sparkles className="h-3.5 w-3.5 mr-1" /> Gerar resposta com IA
+                </Button>
+                <Button size="sm" variant="outline" className="text-xs">
+                  <CornerDownLeft className="h-3.5 w-3.5 mr-1" /> Usar rascunho da IA
+                </Button>
+              </div>
             </div>
             <div className="flex gap-2 items-end">
               <Textarea
@@ -478,7 +483,7 @@ function Inbox() {
               <Button size="icon" variant="outline" disabled title="Em breve: enviar áudio">
                 <Mic className="h-4 w-4" />
               </Button>
-              <Button size="icon">
+              <Button size="icon" disabled={busy || !draft.trim()} onClick={handleEnviar}>
                 <Send className="h-4 w-4" />
               </Button>
             </div>
