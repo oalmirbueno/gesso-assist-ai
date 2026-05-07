@@ -140,12 +140,18 @@ export type Database = {
       }
       conversations: {
         Row: {
+          ai_confidence: number | null
+          ai_draft_reply: string | null
           ai_enabled: boolean
+          ai_last_decision: Json | null
           ai_summary: string | null
           assigned_user_id: string | null
           contact_id: string
           created_at: string
+          funnel_stage: string | null
           id: string
+          intent: string | null
+          last_ai_action: string | null
           last_message_at: string | null
           needs_human: boolean
           needs_human_reason: string | null
@@ -155,12 +161,18 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          ai_confidence?: number | null
+          ai_draft_reply?: string | null
           ai_enabled?: boolean
+          ai_last_decision?: Json | null
           ai_summary?: string | null
           assigned_user_id?: string | null
           contact_id: string
           created_at?: string
+          funnel_stage?: string | null
           id?: string
+          intent?: string | null
+          last_ai_action?: string | null
           last_message_at?: string | null
           needs_human?: boolean
           needs_human_reason?: string | null
@@ -170,12 +182,18 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          ai_confidence?: number | null
+          ai_draft_reply?: string | null
           ai_enabled?: boolean
+          ai_last_decision?: Json | null
           ai_summary?: string | null
           assigned_user_id?: string | null
           contact_id?: string
           created_at?: string
+          funnel_stage?: string | null
           id?: string
+          intent?: string | null
+          last_ai_action?: string | null
           last_message_at?: string | null
           needs_human?: boolean
           needs_human_reason?: string | null
