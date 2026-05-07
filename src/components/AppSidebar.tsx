@@ -8,6 +8,7 @@ import {
   Sparkles,
   UserCog,
   Settings,
+  Webhook,
 } from "lucide-react";
 
 const items = [
@@ -19,6 +20,7 @@ const items = [
   { to: "/aprendizados", label: "Aprendizados da IA", icon: Sparkles },
   { to: "/usuarios", label: "Usuários", icon: UserCog },
   { to: "/configuracoes", label: "Configurações", icon: Settings },
+  { to: "/dev-webhook", label: "Dev Webhook", icon: Webhook },
 ];
 
 export function AppSidebar() {

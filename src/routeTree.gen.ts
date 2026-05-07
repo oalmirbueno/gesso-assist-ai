@@ -12,11 +12,13 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as UsuariosRouteImport } from './routes/usuarios'
 import { Route as ObjecoesRouteImport } from './routes/objecoes'
 import { Route as InboxRouteImport } from './routes/inbox'
+import { Route as DevWebhookRouteImport } from './routes/dev-webhook'
 import { Route as CrmRouteImport } from './routes/crm'
 import { Route as ConhecimentoRouteImport } from './routes/conhecimento'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as AprendizadosRouteImport } from './routes/aprendizados'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiN8nInboundWhatsappRouteImport } from './routes/api/n8n/inbound-whatsapp'
 
 const UsuariosRoute = UsuariosRouteImport.update({
   id: '/usuarios',
@@ -31,6 +33,11 @@ const ObjecoesRoute = ObjecoesRouteImport.update({
 const InboxRoute = InboxRouteImport.update({
   id: '/inbox',
   path: '/inbox',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DevWebhookRoute = DevWebhookRouteImport.update({
+  id: '/dev-webhook',
+  path: '/dev-webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CrmRoute = CrmRouteImport.update({
@@ -58,6 +65,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiN8nInboundWhatsappRoute = ApiN8nInboundWhatsappRouteImport.update({
+  id: '/api/n8n/inbound-whatsapp',
+  path: '/api/n8n/inbound-whatsapp',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -65,9 +77,11 @@ export interface FileRoutesByFullPath {
   '/configuracoes': typeof ConfiguracoesRoute
   '/conhecimento': typeof ConhecimentoRoute
   '/crm': typeof CrmRoute
+  '/dev-webhook': typeof DevWebhookRoute
   '/inbox': typeof InboxRoute
   '/objecoes': typeof ObjecoesRoute
   '/usuarios': typeof UsuariosRoute
+  '/api/n8n/inbound-whatsapp': typeof ApiN8nInboundWhatsappRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -75,9 +89,11 @@ export interface FileRoutesByTo {
   '/configuracoes': typeof ConfiguracoesRoute
   '/conhecimento': typeof ConhecimentoRoute
   '/crm': typeof CrmRoute
+  '/dev-webhook': typeof DevWebhookRoute
   '/inbox': typeof InboxRoute
   '/objecoes': typeof ObjecoesRoute
   '/usuarios': typeof UsuariosRoute
+  '/api/n8n/inbound-whatsapp': typeof ApiN8nInboundWhatsappRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -86,9 +102,11 @@ export interface FileRoutesById {
   '/configuracoes': typeof ConfiguracoesRoute
   '/conhecimento': typeof ConhecimentoRoute
   '/crm': typeof CrmRoute
+  '/dev-webhook': typeof DevWebhookRoute
   '/inbox': typeof InboxRoute
   '/objecoes': typeof ObjecoesRoute
   '/usuarios': typeof UsuariosRoute
+  '/api/n8n/inbound-whatsapp': typeof ApiN8nInboundWhatsappRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -98,9 +116,11 @@ export interface FileRouteTypes {
     | '/configuracoes'
     | '/conhecimento'
     | '/crm'
+    | '/dev-webhook'
     | '/inbox'
     | '/objecoes'
     | '/usuarios'
+    | '/api/n8n/inbound-whatsapp'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -108,9 +128,11 @@ export interface FileRouteTypes {
     | '/configuracoes'
     | '/conhecimento'
     | '/crm'
+    | '/dev-webhook'
     | '/inbox'
     | '/objecoes'
     | '/usuarios'
+    | '/api/n8n/inbound-whatsapp'
   id:
     | '__root__'
     | '/'
@@ -118,9 +140,11 @@ export interface FileRouteTypes {
     | '/configuracoes'
     | '/conhecimento'
     | '/crm'
+    | '/dev-webhook'
     | '/inbox'
     | '/objecoes'
     | '/usuarios'
+    | '/api/n8n/inbound-whatsapp'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -129,9 +153,11 @@ export interface RootRouteChildren {
   ConfiguracoesRoute: typeof ConfiguracoesRoute
   ConhecimentoRoute: typeof ConhecimentoRoute
   CrmRoute: typeof CrmRoute
+  DevWebhookRoute: typeof DevWebhookRoute
   InboxRoute: typeof InboxRoute
   ObjecoesRoute: typeof ObjecoesRoute
   UsuariosRoute: typeof UsuariosRoute
+  ApiN8nInboundWhatsappRoute: typeof ApiN8nInboundWhatsappRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -155,6 +181,13 @@ declare module '@tanstack/react-router' {
       path: '/inbox'
       fullPath: '/inbox'
       preLoaderRoute: typeof InboxRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dev-webhook': {
+      id: '/dev-webhook'
+      path: '/dev-webhook'
+      fullPath: '/dev-webhook'
+      preLoaderRoute: typeof DevWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/crm': {
@@ -192,6 +225,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/n8n/inbound-whatsapp': {
+      id: '/api/n8n/inbound-whatsapp'
+      path: '/api/n8n/inbound-whatsapp'
+      fullPath: '/api/n8n/inbound-whatsapp'
+      preLoaderRoute: typeof ApiN8nInboundWhatsappRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -201,9 +241,11 @@ const rootRouteChildren: RootRouteChildren = {
   ConfiguracoesRoute: ConfiguracoesRoute,
   ConhecimentoRoute: ConhecimentoRoute,
   CrmRoute: CrmRoute,
+  DevWebhookRoute: DevWebhookRoute,
   InboxRoute: InboxRoute,
   ObjecoesRoute: ObjecoesRoute,
   UsuariosRoute: UsuariosRoute,
+  ApiN8nInboundWhatsappRoute: ApiN8nInboundWhatsappRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
