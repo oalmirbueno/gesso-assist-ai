@@ -23,7 +23,8 @@ function Learn() {
     <AppShell title="Aprendizados da IA">
       <div className="p-6 space-y-4">
         <p className="text-sm text-muted-foreground">
-          Toda correção feita por humano vira sugestão de aprendizado. Admin aprova antes de virar regra ativa.
+          Toda correção feita por humano vira sugestão de aprendizado. Admin aprova
+          antes de virar regra ativa — e só então é enviada ao agente no n8n.
         </p>
         <div className="space-y-3">
           {aiLearnings.map((l) => (
