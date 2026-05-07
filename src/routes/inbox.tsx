@@ -150,6 +150,9 @@ function Inbox() {
   const selected =
     conversations.find((c) => c.id === selectedId) ?? conversations[0];
   const contact = selected ? getContact(selected.contactId) : undefined;
+  const selectedReal = useReal && selected
+    ? real?.find((r) => r.id === selected.id)
+    : undefined;
 
   const realMsgs = useRealtimeMessages(useReal && selected ? selected.id : null);
   const messages: MockMessage[] = useReal
