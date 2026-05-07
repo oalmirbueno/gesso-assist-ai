@@ -136,11 +136,34 @@ export interface N8nInboundPayload {
   };
   ai?: {
     draft_reply?: string;
+    reply_body?: string;
     mode?: string;
     reason?: string;
     summary?: string;
+    intent?: string;
+    stage?: string;
+    confidence?: number;
+    should_auto_send?: boolean;
+    handoff_reason?: string | null;
+    last_action?: string;
+    collected_fields?: Record<string, unknown>;
+    missing_fields?: string[];
+    decision?: Record<string, unknown>;
   };
   meta?: Record<string, unknown>;
+}
+
+export interface AiDecision {
+  reply_body?: string;
+  intent?: string;
+  stage?: string;
+  confidence?: number;
+  should_auto_send?: boolean;
+  needs_human?: boolean;
+  handoff_reason?: string | null;
+  collected_fields?: Record<string, unknown>;
+  missing_fields?: string[];
+  priority?: Priority | string;
 }
 
 export interface InboundResult {
