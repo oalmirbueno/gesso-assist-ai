@@ -1,152 +1,122 @@
 /**
  * n8nService — ponte do painel Lovable para o n8n.
  *
- * IMPORTANTE: O n8n é o cérebro do atendimento. Este serviço apenas envia
- * eventos / pedidos para o n8n. A lógica de OpenAI, WhatsApp Cloud API,
- * transcrição (Whisper) e TTS roda toda no n8n.
- *
- * As URLs ficam configuráveis (localStorage no MVP). Em produção devem ir
- * para uma tabela `integrations` ou variáveis de ambiente do servidor.
+ * IMPORTANTE: O n8n é o cérebro do atendimento. Este serviço SOMENTE chama
+ * o endpoint interno /api/n8n/proxy, que roda no servidor e injeta o header
+ * `x-n8n-secret` (lido de N8N_PANEL_SECRET). O segredo NUNCA aparece no
+ * frontend/browser.
  */
-import type {
-  AiControlAction,
-  AiControlPayload,
-  HumanOutboundPayload,
-} from "@/types/domain";
+import type { HumanOutboundPayload } from "@/types/domain";
 
-const STORAGE_KEY = "gs.n8n.config";
+type ProxyTarget =
+  | "test_connection"
+  | "ai_control"
+  | "human_outbound"
+  | "learning_feedback";
 
-export interface N8nConfig {
-  inboundUrl?: string; // n8n -> painel (informativo)
-  humanOutboundUrl?: string; // painel -> n8n (mensagem humana)
-  aiControlUrl?: string; // painel -> n8n (pause/resume/draft)
-  learningUrl?: string; // painel -> n8n (aprendizado aprovado)
+export interface N8nCallResult {
+  success: boolean;
+  ok?: boolean;
+  status?: number | string;
+  response?: any;
+  dryRun?: boolean;
+  error?: string;
 }
 
-export function getN8nConfig(): N8nConfig {
-  if (typeof window === "undefined") return {};
+async function callN8n(target: ProxyTarget, payload: unknown): Promise<N8nCallResult> {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}") as N8nConfig;
-  } catch {
-    return {};
-  }
-}
-
-export function saveN8nConfig(cfg: N8nConfig) {
-  if (typeof window === "undefined") return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(cfg));
-}
-
-async function postIfConfigured(url: string | undefined, body: unknown) {
-  if (!url) {
-    return {
-      success: true,
-      mocked: true,
-      reason: "URL do n8n não configurada — operação registrada apenas no painel.",
-    } as const;
-  }
-  try {
-    const res = await fetch(url, {
+    const res = await fetch("/api/n8n/proxy", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
+      body: JSON.stringify({ target, payload }),
     });
-    const text = await res.text();
-    let json: any = null;
-    try {
-      json = text ? JSON.parse(text) : null;
-    } catch {
-      json = { raw: text };
-    }
-    if (!res.ok) {
-      return { success: false, status: res.status, error: json?.error ?? text } as const;
-    }
-    return { success: true, response: json } as const;
+    const data = await res.json().catch(() => ({}));
+    const inner = data?.response ?? {};
+    const ok = !!data?.ok;
+    return {
+      success: ok,
+      ok,
+      status: data?.status ?? res.status,
+      response: inner,
+      dryRun: !!inner?.dry_run,
+      error: ok ? undefined : inner?.error ?? data?.error ?? `HTTP ${res.status}`,
+    };
   } catch (e: any) {
-    return { success: false, error: e?.message ?? "network error" } as const;
+    return { success: false, ok: false, error: e?.message ?? "network error" };
   }
-}
-
-export async function sendHumanMessageToN8n(payload: HumanOutboundPayload) {
-  const cfg = getN8nConfig();
-  return postIfConfigured(cfg.humanOutboundUrl, payload);
-}
-
-function controlPayload(
-  conversationId: string,
-  action: AiControlAction,
-  reason?: string,
-  extra?: Record<string, unknown>,
-): AiControlPayload {
-  return {
-    conversation_id: conversationId,
-    action,
-    reason,
-    payload: extra,
-  };
-}
-
-export async function pauseAiInN8n(conversationId: string, reason?: string) {
-  const cfg = getN8nConfig();
-  return postIfConfigured(cfg.aiControlUrl, controlPayload(conversationId, "pause_ai", reason));
-}
-
-export async function resumeAiInN8n(conversationId: string) {
-  const cfg = getN8nConfig();
-  return postIfConfigured(cfg.aiControlUrl, controlPayload(conversationId, "resume_ai"));
-}
-
-export async function requestAiDraftFromN8n(conversationId: string) {
-  const cfg = getN8nConfig();
-  return postIfConfigured(cfg.aiControlUrl, controlPayload(conversationId, "request_ai_draft"));
-}
-
-export async function sendLearningFeedbackToN8n(args: {
-  conversationId?: string | null;
-  learningId: string;
-  approved: boolean;
-  original?: string | null;
-  edited?: string | null;
-  suggestion?: string | null;
-}) {
-  const cfg = getN8nConfig();
-  return postIfConfigured(
-    cfg.learningUrl,
-    controlPayload(
-      args.conversationId ?? "",
-      args.approved ? "approve_learning" : "reject_learning",
-      undefined,
-      {
-        learning_id: args.learningId,
-        original: args.original,
-        edited: args.edited,
-        suggestion: args.suggestion,
-      },
-    ),
-  );
 }
 
 export async function testN8nConnection() {
-  const cfg = getN8nConfig();
-  const targets = [
-    { name: "humanOutboundUrl", url: cfg.humanOutboundUrl },
-    { name: "aiControlUrl", url: cfg.aiControlUrl },
-    { name: "learningUrl", url: cfg.learningUrl },
-  ];
-  const results = await Promise.all(
-    targets.map(async (t) => {
-      if (!t.url) return { ...t, ok: false, status: "não configurado" };
-      try {
-        const res = await fetch(t.url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ ping: true, from: "lovable_panel" }),
-        });
-        return { ...t, ok: res.ok, status: `${res.status}` };
-      } catch (e: any) {
-        return { ...t, ok: false, status: e?.message ?? "erro" };
+  return callN8n("test_connection", {
+    source: "lovable_panel",
+    event: "test_connection",
+    timestamp: new Date().toISOString(),
+  });
+}
+
+export async function pauseAiInN8n(
+  conversationId: string,
+  reason: string = "human_assumed",
+  userId?: string,
+) {
+  return callN8n("ai_control", {
+    conversation_id: conversationId,
+    action: "pause_ai",
+    reason,
+    user_id: userId,
+  });
+}
+
+export async function resumeAiInN8n(conversationId: string, userId?: string) {
+  return callN8n("ai_control", {
+    conversation_id: conversationId,
+    action: "resume_ai",
+    reason: "returned_to_ai",
+    user_id: userId,
+  });
+}
+
+export async function requestAiDraftFromN8n(
+  conversationId: string,
+  payload?: Record<string, unknown>,
+) {
+  return callN8n("ai_control", {
+    conversation_id: conversationId,
+    action: "request_ai_draft",
+    payload,
+  });
+}
+
+export async function sendHumanMessageToN8n(payload: HumanOutboundPayload) {
+  return callN8n("human_outbound", payload);
+}
+
+export async function sendLearningFeedbackToN8n(args: {
+  conversationId: string;
+  learningId: string;
+  approved: boolean;
+  approvedBy?: string;
+  original?: string | null;
+  edited?: string | null;
+  suggestion?: string | null;
+  reason?: string | null;
+  category?: string | null;
+}) {
+  const action = args.approved ? "approve_learning" : "reject_learning";
+  const payload = args.approved
+    ? {
+        original_ai_reply: args.original,
+        human_correction: args.edited,
+        lesson: args.suggestion,
+        category: args.category,
       }
-    }),
-  );
-  return { success: results.every((r) => r.ok || r.status === "não configurado"), results };
+    : { reason: args.reason };
+
+  return callN8n("learning_feedback", {
+    conversation_id: args.conversationId,
+    learning_id: args.learningId,
+    action,
+    approved_by: args.approvedBy,
+    payload,
+  });
 }
