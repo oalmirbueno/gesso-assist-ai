@@ -83,6 +83,8 @@ function Inbox() {
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [draft, setDraft] = useState("");
+  const [busy, setBusy] = useState(false);
+  const { user } = useAuthSession();
 
   const real = useRealtimeConversations();
   const useReal = !!real && real.length > 0;
