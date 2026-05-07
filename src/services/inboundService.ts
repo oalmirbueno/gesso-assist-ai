@@ -121,7 +121,7 @@ export async function insertMessage(
       audio_url: msg.audio_url ?? null,
       transcript: msg.transcript ?? null,
       provider_message_id: msg.provider_message_id ?? null,
-      raw: msg.raw ?? null,
+      raw: (msg.raw as any) ?? null,
     })
     .select("*")
     .single();
@@ -143,7 +143,7 @@ export async function insertConversationEvent(
     .insert({
       conversation_id: conversationId,
       event_type: eventType,
-      payload: payload ?? null,
+      payload: (payload as any) ?? null,
     })
     .select("*")
     .single();
