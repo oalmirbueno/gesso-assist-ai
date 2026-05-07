@@ -3,6 +3,7 @@ import { useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { AuthPanel } from "@/components/AuthPanel";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -54,9 +55,10 @@ const SAMPLE: N8nInboundPayload = {
 function DevWebhook() {
   const { user, loading: authLoading, isAuthenticated } = useAuthSession();
   const [json, setJson] = useState(JSON.stringify(SAMPLE, null, 2));
+  const [secret, setSecret] = useState("");
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [mode, setMode] = useState<"client" | "endpoint">("client");
+  const [mode, setMode] = useState<"client" | "endpoint">("endpoint");
 
   const needsLogin = mode === "client" && !isAuthenticated;
 
@@ -77,10 +79,16 @@ function DevWebhook() {
       } else {
         const r = await fetch("/api/public/n8n/inbound-whatsapp", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            ...(secret ? { "x-n8n-secret": secret } : {}),
+          },
           body: JSON.stringify(payload),
         });
         res = await r.json();
+        if (r.status === 401) {
+          throw new Error(res?.error ?? "x-n8n-secret inválido");
+        }
       }
       setResult(res);
       if (res?.success) {
@@ -158,6 +166,22 @@ function DevWebhook() {
                 O botão “Via service (RLS)” usa as permissões do usuário autenticado.
               </AlertDescription>
             </Alert>
+          )}
+          {mode === "endpoint" && (
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">
+                x-n8n-secret (header)
+              </label>
+              <Input
+                type="password"
+                placeholder="Cole o segredo compartilhado N8N_PANEL_SECRET"
+                value={secret}
+                onChange={(e) => setSecret(e.target.value)}
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Em produção o endpoint só aceita requisições com este header válido.
+              </p>
+            </div>
           )}
           <Textarea
             value={json}

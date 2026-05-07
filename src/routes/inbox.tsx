@@ -18,6 +18,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuthSession } from "@/hooks/useAuthSession";
+import {
+  pauseAiInN8n,
+  resumeAiInN8n,
+  requestAiDraftFromN8n,
+  sendHumanMessageToN8n,
+} from "@/services/n8nService";
+import { toast } from "sonner";
 import {
   Search,
   Mic,
@@ -74,6 +83,8 @@ function Inbox() {
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
   const [draft, setDraft] = useState("");
+  const [busy, setBusy] = useState(false);
+  const { user } = useAuthSession();
 
   const real = useRealtimeConversations();
   const useReal = !!real && real.length > 0;
@@ -156,6 +167,108 @@ function Inbox() {
     : selected
       ? mockMessagesByConv[selected.id] ?? []
       : [];
+
+  async function handleAssumir() {
+    if (!selected) return;
+    setBusy(true);
+    try {
+      if (useReal) {
+        await supabase
+          .from("conversations")
+          .update({
+            assigned_user_id: user?.id ?? null,
+            ai_enabled: false,
+            needs_human: false,
+            status: "em_atendimento",
+          })
+          .eq("id", selected.id);
+        await supabase.from("conversation_events").insert({
+          conversation_id: selected.id,
+          event_type: "human_assumed",
+          payload: { user_id: user?.id ?? null } as any,
+        });
+      }
+      const r = await pauseAiInN8n(selected.id, "humano assumiu");
+      toast.success(r.success ? "Você assumiu a conversa" : "Assumido no painel (n8n não respondeu)");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao assumir");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDevolver() {
+    if (!selected) return;
+    setBusy(true);
+    try {
+      if (useReal) {
+        await supabase
+          .from("conversations")
+          .update({
+            ai_enabled: true,
+            status: "ia_respondendo",
+            assigned_user_id: null,
+          })
+          .eq("id", selected.id);
+        await supabase.from("conversation_events").insert({
+          conversation_id: selected.id,
+          event_type: "returned_to_ai",
+          payload: { user_id: user?.id ?? null } as any,
+        });
+      }
+      const r = await resumeAiInN8n(selected.id);
+      toast.success(r.success ? "IA reativada" : "Reativada no painel (n8n não respondeu)");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao devolver");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleGerarRascunho() {
+    if (!selected) return;
+    setBusy(true);
+    const r = await requestAiDraftFromN8n(selected.id);
+    setBusy(false);
+    if (r.success) toast.success("Rascunho solicitado ao n8n");
+    else toast.error(`Falha: ${r.error ?? "n8n"}`);
+  }
+
+  async function handleEnviar() {
+    if (!selected || !contact || !draft.trim()) return;
+    setBusy(true);
+    try {
+      if (useReal) {
+        await supabase.from("messages").insert({
+          conversation_id: selected.id,
+          direction: "outbound",
+          sender_type: "human",
+          body: draft,
+          message_type: "text",
+        });
+      }
+      const r = await sendHumanMessageToN8n({
+        conversation_id: selected.id,
+        contact_phone: contact.phone,
+        message: { body: draft, message_type: "text", audio_url: null },
+        sender: {
+          user_id: user?.id ?? "anon",
+          name: user?.email ?? "Atendente",
+        },
+        control: { keep_ai_paused: true, mark_as_human_assumed: true },
+      });
+      if (r.success) {
+        toast.success(r.mocked ? "Mensagem registrada (n8n não configurado)" : "Mensagem enviada via n8n");
+        setDraft("");
+      } else {
+        toast.error(`Falha n8n: ${r.error ?? "desconhecido"}`);
+      }
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao enviar");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   if (!selected || !contact) {
     return (
@@ -266,13 +379,12 @@ function Inbox() {
             <Badge variant="outline" className={statusLabel[selected.status].className}>
               {statusLabel[selected.status].label}
             </Badge>
-            {selected.needsHuman && (
-              <Button size="sm" variant="default">
+            {selected.aiEnabled || selected.needsHuman ? (
+              <Button size="sm" variant="default" disabled={busy} onClick={handleAssumir}>
                 <User className="h-4 w-4 mr-1" /> Assumir
               </Button>
-            )}
-            {!selected.aiEnabled && !selected.needsHuman && (
-              <Button size="sm" variant="outline">
+            ) : (
+              <Button size="sm" variant="outline" disabled={busy} onClick={handleDevolver}>
                 <Bot className="h-4 w-4 mr-1" /> Devolver p/ IA
               </Button>
             )}
@@ -348,13 +460,18 @@ function Inbox() {
           </div>
 
           <div className="border-t bg-card p-3 space-y-2">
-            <div className="flex gap-2">
-              <Button size="sm" variant="outline" className="text-xs">
-                <Sparkles className="h-3.5 w-3.5 mr-1" /> Gerar resposta com IA
-              </Button>
-              <Button size="sm" variant="outline" className="text-xs">
-                <CornerDownLeft className="h-3.5 w-3.5 mr-1" /> Usar rascunho da IA
-              </Button>
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-[11px] text-muted-foreground">
+                Mensagens humanas são enviadas pelo n8n → WhatsApp Cloud API.
+              </p>
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" className="text-xs" disabled={busy} onClick={handleGerarRascunho}>
+                  <Sparkles className="h-3.5 w-3.5 mr-1" /> Gerar resposta com IA
+                </Button>
+                <Button size="sm" variant="outline" className="text-xs">
+                  <CornerDownLeft className="h-3.5 w-3.5 mr-1" /> Usar rascunho da IA
+                </Button>
+              </div>
             </div>
             <div className="flex gap-2 items-end">
               <Textarea
@@ -366,7 +483,7 @@ function Inbox() {
               <Button size="icon" variant="outline" disabled title="Em breve: enviar áudio">
                 <Mic className="h-4 w-4" />
               </Button>
-              <Button size="icon">
+              <Button size="icon" disabled={busy || !draft.trim()} onClick={handleEnviar}>
                 <Send className="h-4 w-4" />
               </Button>
             </div>

@@ -20,10 +20,16 @@ function ObjPage() {
   return (
     <AppShell title="Objeções">
       <div className="p-6 space-y-4">
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">
-            Como a IA deve responder cada tipo de objeção. Cada item pode ser ativado/desativado.
-          </p>
+        <div className="flex items-start justify-between gap-3">
+          <div className="space-y-1">
+            <p className="text-sm text-muted-foreground">
+              Como a IA deve responder cada tipo de objeção. Cada item pode ser ativado/desativado.
+            </p>
+            <p className="text-xs text-primary">
+              Estas objeções são usadas pelo agente no n8n para orientar respostas.
+              Alterações aprovadas serão consideradas nas próximas conversas.
+            </p>
+          </div>
           <Button size="sm"><Plus className="h-4 w-4 mr-1" /> Nova objeção</Button>
         </div>
         <div className="border rounded-lg bg-card overflow-hidden">

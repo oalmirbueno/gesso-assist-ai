@@ -5,6 +5,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Check, X, Sparkles } from "lucide-react";
+import { sendLearningFeedbackToN8n } from "@/services/n8nService";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/aprendizados")({
   component: Learn,
@@ -21,7 +23,8 @@ function Learn() {
     <AppShell title="Aprendizados da IA">
       <div className="p-6 space-y-4">
         <p className="text-sm text-muted-foreground">
-          Toda correção feita por humano vira sugestão de aprendizado. Admin aprova antes de virar regra ativa.
+          Toda correção feita por humano vira sugestão de aprendizado. Admin aprova
+          antes de virar regra ativa — e só então é enviada ao agente no n8n.
         </p>
         <div className="space-y-3">
           {aiLearnings.map((l) => (
@@ -57,8 +60,38 @@ function Learn() {
               </div>
               {l.status === "pendente" && (
                 <div className="flex gap-2 pt-1">
-                  <Button size="sm"><Check className="h-4 w-4 mr-1" /> Aprovar e ensinar IA</Button>
-                  <Button size="sm" variant="outline"><X className="h-4 w-4 mr-1" /> Rejeitar</Button>
+                  <Button
+                    size="sm"
+                    onClick={async () => {
+                      const r = await sendLearningFeedbackToN8n({
+                        learningId: l.id,
+                        conversationId: l.conversationId,
+                        approved: true,
+                        original: l.original,
+                        edited: l.edited,
+                        suggestion: l.suggested,
+                      });
+                      toast[r.success ? "success" : "error"](
+                        r.success ? "Aprendizado enviado ao n8n" : `Falha: ${r.error ?? ""}`,
+                      );
+                    }}
+                  >
+                    <Check className="h-4 w-4 mr-1" /> Aprovar e ensinar IA
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={async () => {
+                      await sendLearningFeedbackToN8n({
+                        learningId: l.id,
+                        conversationId: l.conversationId,
+                        approved: false,
+                      });
+                      toast.success("Aprendizado rejeitado");
+                    }}
+                  >
+                    <X className="h-4 w-4 mr-1" /> Rejeitar
+                  </Button>
                 </div>
               )}
             </Card>

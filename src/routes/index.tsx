@@ -51,6 +51,14 @@ function Dashboard() {
   return (
     <AppShell title="Dashboard">
       <div className="p-6 space-y-6">
+        <Card className="p-4 border-primary/30 bg-primary/5">
+          <p className="text-sm">
+            <span className="font-semibold text-primary">A IA roda no n8n.</span>{" "}
+            <span className="text-muted-foreground">
+              Este painel acompanha, controla e ensina o agente — não envia mensagens diretamente para o WhatsApp nem chama a OpenAI.
+            </span>
+          </p>
+        </Card>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {cards.map((c) => {
             const Icon = c.icon;
