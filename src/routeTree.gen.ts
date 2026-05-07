@@ -9,11 +9,17 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ObjecoesRouteImport } from './routes/objecoes'
 import { Route as InboxRouteImport } from './routes/inbox'
 import { Route as CrmRouteImport } from './routes/crm'
 import { Route as ConhecimentoRouteImport } from './routes/conhecimento'
 import { Route as IndexRouteImport } from './routes/index'
 
+const ObjecoesRoute = ObjecoesRouteImport.update({
+  id: '/objecoes',
+  path: '/objecoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const InboxRoute = InboxRouteImport.update({
   id: '/inbox',
   path: '/inbox',
@@ -40,12 +46,14 @@ export interface FileRoutesByFullPath {
   '/conhecimento': typeof ConhecimentoRoute
   '/crm': typeof CrmRoute
   '/inbox': typeof InboxRoute
+  '/objecoes': typeof ObjecoesRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/conhecimento': typeof ConhecimentoRoute
   '/crm': typeof CrmRoute
   '/inbox': typeof InboxRoute
+  '/objecoes': typeof ObjecoesRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -53,13 +61,14 @@ export interface FileRoutesById {
   '/conhecimento': typeof ConhecimentoRoute
   '/crm': typeof CrmRoute
   '/inbox': typeof InboxRoute
+  '/objecoes': typeof ObjecoesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/conhecimento' | '/crm' | '/inbox'
+  fullPaths: '/' | '/conhecimento' | '/crm' | '/inbox' | '/objecoes'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/conhecimento' | '/crm' | '/inbox'
-  id: '__root__' | '/' | '/conhecimento' | '/crm' | '/inbox'
+  to: '/' | '/conhecimento' | '/crm' | '/inbox' | '/objecoes'
+  id: '__root__' | '/' | '/conhecimento' | '/crm' | '/inbox' | '/objecoes'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -67,10 +76,18 @@ export interface RootRouteChildren {
   ConhecimentoRoute: typeof ConhecimentoRoute
   CrmRoute: typeof CrmRoute
   InboxRoute: typeof InboxRoute
+  ObjecoesRoute: typeof ObjecoesRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/objecoes': {
+      id: '/objecoes'
+      path: '/objecoes'
+      fullPath: '/objecoes'
+      preLoaderRoute: typeof ObjecoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/inbox': {
       id: '/inbox'
       path: '/inbox'
@@ -107,6 +124,7 @@ const rootRouteChildren: RootRouteChildren = {
   ConhecimentoRoute: ConhecimentoRoute,
   CrmRoute: CrmRoute,
   InboxRoute: InboxRoute,
+  ObjecoesRoute: ObjecoesRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
