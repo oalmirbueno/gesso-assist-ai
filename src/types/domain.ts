@@ -150,3 +150,47 @@ export interface InboundResult {
   message_id: string;
   error?: string;
 }
+
+// ===== Painel -> n8n =====
+export interface HumanOutboundPayload {
+  conversation_id: string;
+  contact_phone: string;
+  message: {
+    body: string;
+    message_type: "text" | "audio";
+    audio_url?: string | null;
+  };
+  sender: {
+    user_id: string;
+    name: string;
+  };
+  control?: {
+    keep_ai_paused?: boolean;
+    mark_as_human_assumed?: boolean;
+  };
+}
+
+export type AiControlAction =
+  | "pause_ai"
+  | "resume_ai"
+  | "request_ai_draft"
+  | "approve_learning"
+  | "reject_learning";
+
+export interface AiControlPayload {
+  conversation_id: string;
+  action: AiControlAction;
+  reason?: string;
+  user_id?: string;
+  payload?: Record<string, unknown>;
+}
+
+// Estados de áudio gerenciados pelo n8n
+export type AudioState =
+  | "audio_received"
+  | "transcribing_audio"
+  | "transcript_ready"
+  | "transcript_failed"
+  | "tts_generating"
+  | "audio_reply_ready"
+  | "audio_failed";
