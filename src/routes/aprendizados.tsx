@@ -60,8 +60,38 @@ function Learn() {
               </div>
               {l.status === "pendente" && (
                 <div className="flex gap-2 pt-1">
-                  <Button size="sm"><Check className="h-4 w-4 mr-1" /> Aprovar e ensinar IA</Button>
-                  <Button size="sm" variant="outline"><X className="h-4 w-4 mr-1" /> Rejeitar</Button>
+                  <Button
+                    size="sm"
+                    onClick={async () => {
+                      const r = await sendLearningFeedbackToN8n({
+                        learningId: l.id,
+                        conversationId: l.conversationId,
+                        approved: true,
+                        original: l.original,
+                        edited: l.edited,
+                        suggestion: l.suggested,
+                      });
+                      toast[r.success ? "success" : "error"](
+                        r.success ? "Aprendizado enviado ao n8n" : `Falha: ${r.error ?? ""}`,
+                      );
+                    }}
+                  >
+                    <Check className="h-4 w-4 mr-1" /> Aprovar e ensinar IA
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={async () => {
+                      await sendLearningFeedbackToN8n({
+                        learningId: l.id,
+                        conversationId: l.conversationId,
+                        approved: false,
+                      });
+                      toast.success("Aprendizado rejeitado");
+                    }}
+                  >
+                    <X className="h-4 w-4 mr-1" /> Rejeitar
+                  </Button>
                 </div>
               )}
             </Card>
