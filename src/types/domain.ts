@@ -43,6 +43,12 @@ export interface Conversation {
   last_message_at: string | null;
   ai_summary: string | null;
   unread_count: number;
+  intent?: string | null;
+  funnel_stage?: string | null;
+  ai_confidence?: number | null;
+  last_ai_action?: string | null;
+  ai_last_decision?: Record<string, unknown> | null;
+  ai_draft_reply?: string | null;
   created_at: string;
   updated_at: string;
 }
