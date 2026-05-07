@@ -18,6 +18,15 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuthSession } from "@/hooks/useAuthSession";
+import {
+  pauseAiInN8n,
+  resumeAiInN8n,
+  requestAiDraftFromN8n,
+  sendHumanMessageToN8n,
+} from "@/services/n8nService";
+import { toast } from "sonner";
 import {
   Search,
   Mic,
