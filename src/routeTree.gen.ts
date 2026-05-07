@@ -13,6 +13,7 @@ import { Route as ObjecoesRouteImport } from './routes/objecoes'
 import { Route as InboxRouteImport } from './routes/inbox'
 import { Route as CrmRouteImport } from './routes/crm'
 import { Route as ConhecimentoRouteImport } from './routes/conhecimento'
+import { Route as AprendizadosRouteImport } from './routes/aprendizados'
 import { Route as IndexRouteImport } from './routes/index'
 
 const ObjecoesRoute = ObjecoesRouteImport.update({
@@ -35,6 +36,11 @@ const ConhecimentoRoute = ConhecimentoRouteImport.update({
   path: '/conhecimento',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AprendizadosRoute = AprendizadosRouteImport.update({
+  id: '/aprendizados',
+  path: '/aprendizados',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -43,6 +49,7 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/aprendizados': typeof AprendizadosRoute
   '/conhecimento': typeof ConhecimentoRoute
   '/crm': typeof CrmRoute
   '/inbox': typeof InboxRoute
@@ -50,6 +57,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/aprendizados': typeof AprendizadosRoute
   '/conhecimento': typeof ConhecimentoRoute
   '/crm': typeof CrmRoute
   '/inbox': typeof InboxRoute
@@ -58,6 +66,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/aprendizados': typeof AprendizadosRoute
   '/conhecimento': typeof ConhecimentoRoute
   '/crm': typeof CrmRoute
   '/inbox': typeof InboxRoute
@@ -65,14 +74,28 @@ export interface FileRoutesById {
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/conhecimento' | '/crm' | '/inbox' | '/objecoes'
+  fullPaths:
+    | '/'
+    | '/aprendizados'
+    | '/conhecimento'
+    | '/crm'
+    | '/inbox'
+    | '/objecoes'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/conhecimento' | '/crm' | '/inbox' | '/objecoes'
-  id: '__root__' | '/' | '/conhecimento' | '/crm' | '/inbox' | '/objecoes'
+  to: '/' | '/aprendizados' | '/conhecimento' | '/crm' | '/inbox' | '/objecoes'
+  id:
+    | '__root__'
+    | '/'
+    | '/aprendizados'
+    | '/conhecimento'
+    | '/crm'
+    | '/inbox'
+    | '/objecoes'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AprendizadosRoute: typeof AprendizadosRoute
   ConhecimentoRoute: typeof ConhecimentoRoute
   CrmRoute: typeof CrmRoute
   InboxRoute: typeof InboxRoute
@@ -109,6 +132,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConhecimentoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/aprendizados': {
+      id: '/aprendizados'
+      path: '/aprendizados'
+      fullPath: '/aprendizados'
+      preLoaderRoute: typeof AprendizadosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -121,6 +151,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AprendizadosRoute: AprendizadosRoute,
   ConhecimentoRoute: ConhecimentoRoute,
   CrmRoute: CrmRoute,
   InboxRoute: InboxRoute,
