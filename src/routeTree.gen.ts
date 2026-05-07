@@ -18,6 +18,7 @@ import { Route as ConhecimentoRouteImport } from './routes/conhecimento'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as AprendizadosRouteImport } from './routes/aprendizados'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiN8nProxyRouteImport } from './routes/api/n8n/proxy'
 import { Route as ApiN8nInboundWhatsappRouteImport } from './routes/api/n8n/inbound-whatsapp'
 import { Route as ApiPublicN8nInboundWhatsappRouteImport } from './routes/api/public/n8n/inbound-whatsapp'
 
@@ -66,6 +67,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiN8nProxyRoute = ApiN8nProxyRouteImport.update({
+  id: '/api/n8n/proxy',
+  path: '/api/n8n/proxy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiN8nInboundWhatsappRoute = ApiN8nInboundWhatsappRouteImport.update({
   id: '/api/n8n/inbound-whatsapp',
   path: '/api/n8n/inbound-whatsapp',
@@ -89,6 +95,7 @@ export interface FileRoutesByFullPath {
   '/objecoes': typeof ObjecoesRoute
   '/usuarios': typeof UsuariosRoute
   '/api/n8n/inbound-whatsapp': typeof ApiN8nInboundWhatsappRoute
+  '/api/n8n/proxy': typeof ApiN8nProxyRoute
   '/api/public/n8n/inbound-whatsapp': typeof ApiPublicN8nInboundWhatsappRoute
 }
 export interface FileRoutesByTo {
@@ -102,6 +109,7 @@ export interface FileRoutesByTo {
   '/objecoes': typeof ObjecoesRoute
   '/usuarios': typeof UsuariosRoute
   '/api/n8n/inbound-whatsapp': typeof ApiN8nInboundWhatsappRoute
+  '/api/n8n/proxy': typeof ApiN8nProxyRoute
   '/api/public/n8n/inbound-whatsapp': typeof ApiPublicN8nInboundWhatsappRoute
 }
 export interface FileRoutesById {
@@ -116,6 +124,7 @@ export interface FileRoutesById {
   '/objecoes': typeof ObjecoesRoute
   '/usuarios': typeof UsuariosRoute
   '/api/n8n/inbound-whatsapp': typeof ApiN8nInboundWhatsappRoute
+  '/api/n8n/proxy': typeof ApiN8nProxyRoute
   '/api/public/n8n/inbound-whatsapp': typeof ApiPublicN8nInboundWhatsappRoute
 }
 export interface FileRouteTypes {
@@ -131,6 +140,7 @@ export interface FileRouteTypes {
     | '/objecoes'
     | '/usuarios'
     | '/api/n8n/inbound-whatsapp'
+    | '/api/n8n/proxy'
     | '/api/public/n8n/inbound-whatsapp'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -144,6 +154,7 @@ export interface FileRouteTypes {
     | '/objecoes'
     | '/usuarios'
     | '/api/n8n/inbound-whatsapp'
+    | '/api/n8n/proxy'
     | '/api/public/n8n/inbound-whatsapp'
   id:
     | '__root__'
@@ -157,6 +168,7 @@ export interface FileRouteTypes {
     | '/objecoes'
     | '/usuarios'
     | '/api/n8n/inbound-whatsapp'
+    | '/api/n8n/proxy'
     | '/api/public/n8n/inbound-whatsapp'
   fileRoutesById: FileRoutesById
 }
@@ -171,6 +183,7 @@ export interface RootRouteChildren {
   ObjecoesRoute: typeof ObjecoesRoute
   UsuariosRoute: typeof UsuariosRoute
   ApiN8nInboundWhatsappRoute: typeof ApiN8nInboundWhatsappRoute
+  ApiN8nProxyRoute: typeof ApiN8nProxyRoute
   ApiPublicN8nInboundWhatsappRoute: typeof ApiPublicN8nInboundWhatsappRoute
 }
 
@@ -239,6 +252,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/n8n/proxy': {
+      id: '/api/n8n/proxy'
+      path: '/api/n8n/proxy'
+      fullPath: '/api/n8n/proxy'
+      preLoaderRoute: typeof ApiN8nProxyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/n8n/inbound-whatsapp': {
       id: '/api/n8n/inbound-whatsapp'
       path: '/api/n8n/inbound-whatsapp'
@@ -267,6 +287,7 @@ const rootRouteChildren: RootRouteChildren = {
   ObjecoesRoute: ObjecoesRoute,
   UsuariosRoute: UsuariosRoute,
   ApiN8nInboundWhatsappRoute: ApiN8nInboundWhatsappRoute,
+  ApiN8nProxyRoute: ApiN8nProxyRoute,
   ApiPublicN8nInboundWhatsappRoute: ApiPublicN8nInboundWhatsappRoute,
 }
 export const routeTree = rootRouteImport

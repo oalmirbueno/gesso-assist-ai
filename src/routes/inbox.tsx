@@ -258,7 +258,11 @@ function Inbox() {
         control: { keep_ai_paused: true, mark_as_human_assumed: true },
       });
       if (r.success) {
-        toast.success(r.mocked ? "Mensagem registrada (n8n não configurado)" : "Mensagem enviada via n8n");
+        toast.success(
+          r.dryRun
+            ? "Mensagem aceita pelo n8n (dry_run — envio WhatsApp será ativado depois)"
+            : "Mensagem enviada via n8n",
+        );
         setDraft("");
       } else {
         toast.error(`Falha n8n: ${r.error ?? "desconhecido"}`);
