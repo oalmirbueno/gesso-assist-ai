@@ -43,6 +43,12 @@ export interface Conversation {
   last_message_at: string | null;
   ai_summary: string | null;
   unread_count: number;
+  intent?: string | null;
+  funnel_stage?: string | null;
+  ai_confidence?: number | null;
+  last_ai_action?: string | null;
+  ai_last_decision?: Record<string, unknown> | null;
+  ai_draft_reply?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -136,11 +142,34 @@ export interface N8nInboundPayload {
   };
   ai?: {
     draft_reply?: string;
+    reply_body?: string;
     mode?: string;
     reason?: string;
     summary?: string;
+    intent?: string;
+    stage?: string;
+    confidence?: number;
+    should_auto_send?: boolean;
+    handoff_reason?: string | null;
+    last_action?: string;
+    collected_fields?: Record<string, unknown>;
+    missing_fields?: string[];
+    decision?: Record<string, unknown>;
   };
   meta?: Record<string, unknown>;
+}
+
+export interface AiDecision {
+  reply_body?: string;
+  intent?: string;
+  stage?: string;
+  confidence?: number;
+  should_auto_send?: boolean;
+  needs_human?: boolean;
+  handoff_reason?: string | null;
+  collected_fields?: Record<string, unknown>;
+  missing_fields?: string[];
+  priority?: Priority | string;
 }
 
 export interface InboundResult {

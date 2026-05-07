@@ -51,13 +51,25 @@ function Dashboard() {
   return (
     <AppShell title="Dashboard">
       <div className="p-6 space-y-6">
-        <Card className="p-4 border-primary/30 bg-primary/5">
+        <Card className="p-4 border-primary/30 bg-primary/5 space-y-2">
           <p className="text-sm">
-            <span className="font-semibold text-primary">A IA roda no n8n.</span>{" "}
+            <span className="font-semibold text-primary">Como funciona o atendimento.</span>{" "}
             <span className="text-muted-foreground">
-              Este painel acompanha, controla e ensina o agente — não envia mensagens diretamente para o WhatsApp nem chama a OpenAI.
+              Quando um cliente chama a GS Gesso no WhatsApp, o n8n recebe a mensagem,
+              consulta histórico e base de conhecimento, chama a OpenAI e responde
+              automaticamente como um vendedor humano treinado. Este painel serve para{" "}
+              <strong>acompanhar, corrigir, assumir conversas e ensinar a IA</strong> —
+              ele não fala com o WhatsApp nem com a OpenAI diretamente.
             </span>
           </p>
+          <ol className="text-xs text-muted-foreground list-decimal pl-5 space-y-0.5">
+            <li>Cliente envia mensagem no WhatsApp oficial.</li>
+            <li>WhatsApp Cloud API → webhook do n8n.</li>
+            <li>n8n monta contexto (histórico, contato, funil, base, objeções).</li>
+            <li>n8n chama OpenAI com o agente da GS Gesso e decide a resposta.</li>
+            <li>Se for seguro, n8n responde no WhatsApp; senão pede humano aqui.</li>
+            <li>Painel mostra tudo em tempo real e permite assumir/devolver.</li>
+          </ol>
         </Card>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {cards.map((c) => {

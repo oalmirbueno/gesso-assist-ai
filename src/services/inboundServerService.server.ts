@@ -40,6 +40,15 @@ export async function handleN8nInboundPayloadAdmin(
     .maybeSingle();
   if (conversationLookupError) throw conversationLookupError;
 
+  const aiDecisionFields = {
+    intent: payload.ai?.intent ?? null,
+    funnel_stage: payload.ai?.stage ?? null,
+    ai_confidence: typeof payload.ai?.confidence === "number" ? payload.ai.confidence : null,
+    last_ai_action: payload.ai?.last_action ?? null,
+    ai_last_decision: (payload.ai?.decision ?? payload.ai ?? null) as any,
+    ai_draft_reply: payload.ai?.draft_reply ?? payload.ai?.reply_body ?? null,
+  };
+
   if (!conversation) {
     const { data, error } = await supabaseAdmin
       .from("conversations")
@@ -48,16 +57,18 @@ export async function handleN8nInboundPayloadAdmin(
         status: payload.conversation?.status ?? "nova",
         ai_enabled: payload.conversation?.ai_enabled ?? true,
         needs_human: payload.conversation?.needs_human ?? false,
-        needs_human_reason: payload.conversation?.needs_human_reason ?? null,
+        needs_human_reason:
+          payload.conversation?.needs_human_reason ?? payload.ai?.handoff_reason ?? null,
         priority: payload.conversation?.priority ?? "normal",
         ai_summary: payload.ai?.summary ?? null,
         last_message_at: new Date().toISOString(),
+        ...aiDecisionFields,
       })
       .select("*")
       .single();
     if (error) throw error;
     conversation = data;
-  } else if (payload.conversation || payload.ai?.summary) {
+  } else {
     const { data, error } = await supabaseAdmin
       .from("conversations")
       .update({
@@ -65,10 +76,18 @@ export async function handleN8nInboundPayloadAdmin(
         ai_enabled: payload.conversation?.ai_enabled ?? conversation.ai_enabled,
         needs_human: payload.conversation?.needs_human ?? conversation.needs_human,
         needs_human_reason:
-          payload.conversation?.needs_human_reason ?? conversation.needs_human_reason,
+          payload.conversation?.needs_human_reason ??
+          payload.ai?.handoff_reason ??
+          conversation.needs_human_reason,
         priority: payload.conversation?.priority ?? conversation.priority,
         ai_summary: payload.ai?.summary ?? conversation.ai_summary,
         last_message_at: new Date().toISOString(),
+        intent: aiDecisionFields.intent ?? (conversation as any).intent,
+        funnel_stage: aiDecisionFields.funnel_stage ?? (conversation as any).funnel_stage,
+        ai_confidence: aiDecisionFields.ai_confidence ?? (conversation as any).ai_confidence,
+        last_ai_action: aiDecisionFields.last_ai_action ?? (conversation as any).last_ai_action,
+        ai_last_decision: aiDecisionFields.ai_last_decision ?? (conversation as any).ai_last_decision,
+        ai_draft_reply: aiDecisionFields.ai_draft_reply ?? (conversation as any).ai_draft_reply,
       })
       .eq("id", conversation.id)
       .select("*")

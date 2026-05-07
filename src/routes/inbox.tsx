@@ -150,6 +150,9 @@ function Inbox() {
   const selected =
     conversations.find((c) => c.id === selectedId) ?? conversations[0];
   const contact = selected ? getContact(selected.contactId) : undefined;
+  const selectedReal = useReal && selected
+    ? real?.find((r) => r.id === selected.id)
+    : undefined;
 
   const realMsgs = useRealtimeMessages(useReal && selected ? selected.id : null);
   const messages: MockMessage[] = useReal
@@ -397,11 +400,50 @@ function Inbox() {
             </Button>
           </div>
 
+          {selectedReal && (
+            <div className="bg-card border-b px-4 py-2 text-xs flex flex-wrap items-center gap-x-4 gap-y-1">
+              {selectedReal.intent && (
+                <span><span className="text-muted-foreground">Intenção:</span> <strong>{selectedReal.intent}</strong></span>
+              )}
+              {selectedReal.funnel_stage && (
+                <span><span className="text-muted-foreground">Etapa:</span> <strong>{selectedReal.funnel_stage}</strong></span>
+              )}
+              {typeof selectedReal.ai_confidence === "number" && (
+                <span>
+                  <span className="text-muted-foreground">Confiança IA:</span>{" "}
+                  <strong>{Math.round(selectedReal.ai_confidence * 100)}%</strong>
+                </span>
+              )}
+              {selectedReal.priority && (
+                <span><span className="text-muted-foreground">Prioridade:</span> <strong>{selectedReal.priority}</strong></span>
+              )}
+              {selectedReal.last_ai_action && (
+                <span className="ml-auto text-muted-foreground">
+                  Última ação n8n: <strong className="text-foreground">{selectedReal.last_ai_action}</strong>
+                </span>
+              )}
+            </div>
+          )}
+
           {selected.needsHuman && (
             <div className="bg-warning/15 border-b px-4 py-2 text-sm flex items-center gap-2">
               <AlertCircle className="h-4 w-4 text-warning-foreground" />
               <span className="font-medium">IA pediu humano:</span>
               <span className="text-muted-foreground">{selected.needsHumanReason}</span>
+            </div>
+          )}
+
+          {selectedReal?.ai_draft_reply && (
+            <div className="bg-primary/5 border-b px-4 py-2 text-sm">
+              <div className="flex items-center gap-1 text-[11px] text-primary font-semibold mb-1">
+                <Sparkles className="h-3 w-3" /> Rascunho gerado pela IA (não enviado)
+              </div>
+              <p className="text-sm">{selectedReal.ai_draft_reply}</p>
+              <div className="flex gap-2 mt-2">
+                <Button size="sm" variant="outline" className="text-xs" onClick={() => setDraft(selectedReal.ai_draft_reply ?? "")}>
+                  Usar rascunho
+                </Button>
+              </div>
             </div>
           )}
 
