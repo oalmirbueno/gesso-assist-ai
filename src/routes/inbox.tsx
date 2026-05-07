@@ -168,6 +168,108 @@ function Inbox() {
       ? mockMessagesByConv[selected.id] ?? []
       : [];
 
+  async function handleAssumir() {
+    if (!selected) return;
+    setBusy(true);
+    try {
+      if (useReal) {
+        await supabase
+          .from("conversations")
+          .update({
+            assigned_user_id: user?.id ?? null,
+            ai_enabled: false,
+            needs_human: false,
+            status: "em_atendimento",
+          })
+          .eq("id", selected.id);
+        await supabase.from("conversation_events").insert({
+          conversation_id: selected.id,
+          event_type: "human_assumed",
+          payload: { user_id: user?.id ?? null } as any,
+        });
+      }
+      const r = await pauseAiInN8n(selected.id, "humano assumiu");
+      toast.success(r.success ? "Você assumiu a conversa" : "Assumido no painel (n8n não respondeu)");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao assumir");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDevolver() {
+    if (!selected) return;
+    setBusy(true);
+    try {
+      if (useReal) {
+        await supabase
+          .from("conversations")
+          .update({
+            ai_enabled: true,
+            status: "ia_respondendo",
+            assigned_user_id: null,
+          })
+          .eq("id", selected.id);
+        await supabase.from("conversation_events").insert({
+          conversation_id: selected.id,
+          event_type: "returned_to_ai",
+          payload: { user_id: user?.id ?? null } as any,
+        });
+      }
+      const r = await resumeAiInN8n(selected.id);
+      toast.success(r.success ? "IA reativada" : "Reativada no painel (n8n não respondeu)");
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao devolver");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleGerarRascunho() {
+    if (!selected) return;
+    setBusy(true);
+    const r = await requestAiDraftFromN8n(selected.id);
+    setBusy(false);
+    if (r.success) toast.success("Rascunho solicitado ao n8n");
+    else toast.error(`Falha: ${r.error ?? "n8n"}`);
+  }
+
+  async function handleEnviar() {
+    if (!selected || !contact || !draft.trim()) return;
+    setBusy(true);
+    try {
+      if (useReal) {
+        await supabase.from("messages").insert({
+          conversation_id: selected.id,
+          direction: "outbound",
+          sender_type: "human",
+          body: draft,
+          message_type: "text",
+        });
+      }
+      const r = await sendHumanMessageToN8n({
+        conversation_id: selected.id,
+        contact_phone: contact.phone,
+        message: { body: draft, message_type: "text", audio_url: null },
+        sender: {
+          user_id: user?.id ?? "anon",
+          name: user?.email ?? "Atendente",
+        },
+        control: { keep_ai_paused: true, mark_as_human_assumed: true },
+      });
+      if (r.success) {
+        toast.success(r.mocked ? "Mensagem registrada (n8n não configurado)" : "Mensagem enviada via n8n");
+        setDraft("");
+      } else {
+        toast.error(`Falha n8n: ${r.error ?? "desconhecido"}`);
+      }
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao enviar");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   if (!selected || !contact) {
     return (
       <AppShell title="Conversas">
