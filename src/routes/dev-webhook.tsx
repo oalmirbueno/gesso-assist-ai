@@ -75,7 +75,7 @@ function DevWebhook() {
       if (mode === "client") {
         res = await handleN8nInboundPayload(payload);
       } else {
-        const r = await fetch("/api/n8n/inbound-whatsapp", {
+        const r = await fetch("/api/public/n8n/inbound-whatsapp", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -114,13 +114,13 @@ function DevWebhook() {
               <p className="text-xs text-muted-foreground">
                 Endpoint real:{" "}
                 <code className="bg-muted px-1.5 py-0.5 rounded">
-                  POST /api/n8n/inbound-whatsapp
+                  POST /api/public/n8n/inbound-whatsapp
                 </code>
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
                 {isAuthenticated
                   ? `Logado como ${user?.email}`
-                  : "Faça login para testar o webhook via service. O endpoint /api roda no backend."}
+                  : "Faça login para testar o webhook via service. O endpoint /api/public roda no backend."}
               </p>
             </div>
             <div className="flex gap-2">
