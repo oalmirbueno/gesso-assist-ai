@@ -57,6 +57,8 @@ const statusLabel: Record<string, { label: string; className: string }> = {
   aguardando_cliente: { label: "Aguardando", className: "bg-muted text-muted-foreground" },
   resolvida: { label: "Resolvida", className: "bg-success/15 text-success" },
 };
+const statusOf = (s: string) =>
+  statusLabel[s] ?? { label: s, className: "bg-muted text-muted-foreground" };
 
 function fmtTime(iso?: string | null) {
   if (!iso) return "";
