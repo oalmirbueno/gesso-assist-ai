@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as UsuariosRouteImport } from './routes/usuarios'
 import { Route as ObjecoesRouteImport } from './routes/objecoes'
 import { Route as InboxRouteImport } from './routes/inbox'
 import { Route as CrmRouteImport } from './routes/crm'
@@ -16,6 +17,11 @@ import { Route as ConhecimentoRouteImport } from './routes/conhecimento'
 import { Route as AprendizadosRouteImport } from './routes/aprendizados'
 import { Route as IndexRouteImport } from './routes/index'
 
+const UsuariosRoute = UsuariosRouteImport.update({
+  id: '/usuarios',
+  path: '/usuarios',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ObjecoesRoute = ObjecoesRouteImport.update({
   id: '/objecoes',
   path: '/objecoes',
@@ -54,6 +60,7 @@ export interface FileRoutesByFullPath {
   '/crm': typeof CrmRoute
   '/inbox': typeof InboxRoute
   '/objecoes': typeof ObjecoesRoute
+  '/usuarios': typeof UsuariosRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -62,6 +69,7 @@ export interface FileRoutesByTo {
   '/crm': typeof CrmRoute
   '/inbox': typeof InboxRoute
   '/objecoes': typeof ObjecoesRoute
+  '/usuarios': typeof UsuariosRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -71,6 +79,7 @@ export interface FileRoutesById {
   '/crm': typeof CrmRoute
   '/inbox': typeof InboxRoute
   '/objecoes': typeof ObjecoesRoute
+  '/usuarios': typeof UsuariosRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -81,8 +90,16 @@ export interface FileRouteTypes {
     | '/crm'
     | '/inbox'
     | '/objecoes'
+    | '/usuarios'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/aprendizados' | '/conhecimento' | '/crm' | '/inbox' | '/objecoes'
+  to:
+    | '/'
+    | '/aprendizados'
+    | '/conhecimento'
+    | '/crm'
+    | '/inbox'
+    | '/objecoes'
+    | '/usuarios'
   id:
     | '__root__'
     | '/'
@@ -91,6 +108,7 @@ export interface FileRouteTypes {
     | '/crm'
     | '/inbox'
     | '/objecoes'
+    | '/usuarios'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -100,10 +118,18 @@ export interface RootRouteChildren {
   CrmRoute: typeof CrmRoute
   InboxRoute: typeof InboxRoute
   ObjecoesRoute: typeof ObjecoesRoute
+  UsuariosRoute: typeof UsuariosRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/usuarios': {
+      id: '/usuarios'
+      path: '/usuarios'
+      fullPath: '/usuarios'
+      preLoaderRoute: typeof UsuariosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/objecoes': {
       id: '/objecoes'
       path: '/objecoes'
@@ -156,6 +182,7 @@ const rootRouteChildren: RootRouteChildren = {
   CrmRoute: CrmRoute,
   InboxRoute: InboxRoute,
   ObjecoesRoute: ObjecoesRoute,
+  UsuariosRoute: UsuariosRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
