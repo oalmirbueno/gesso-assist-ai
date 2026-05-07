@@ -1,13 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import {
-  contacts,
-  conversations,
-  messagesByConv,
-  getContact,
+  contacts as mockContacts,
+  conversations as mockConversations,
+  messagesByConv as mockMessagesByConv,
   type ConvStatus,
+  type Contact as MockContact,
+  type Conversation as MockConversation,
+  type Message as MockMessage,
 } from "@/lib/mock-data";
+import {
+  useRealtimeConversations,
+  useRealtimeMessages,
+} from "@/hooks/useRealtimeConversations";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,7 +49,7 @@ const filters = [
   { id: "leads_quentes", label: "Leads quentes" },
 ];
 
-const statusLabel: Record<ConvStatus, { label: string; className: string }> = {
+const statusLabel: Record<string, { label: string; className: string }> = {
   nova: { label: "Nova", className: "bg-info/15 text-info" },
   ia_respondendo: { label: "IA", className: "bg-primary/15 text-primary" },
   precisa_humano: { label: "Precisa humano", className: "bg-warning/20 text-warning-foreground" },
@@ -52,25 +58,116 @@ const statusLabel: Record<ConvStatus, { label: string; className: string }> = {
   resolvida: { label: "Resolvida", className: "bg-success/15 text-success" },
 };
 
+function fmtTime(iso?: string | null) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  const today = new Date();
+  if (d.toDateString() === today.toDateString())
+    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleDateString();
+}
+
 function Inbox() {
   const [filter, setFilter] = useState("all");
   const [search, setSearch] = useState("");
-  const [selectedId, setSelectedId] = useState(conversations[0].id);
   const [draft, setDraft] = useState("");
+
+  const real = useRealtimeConversations();
+  const useReal = !!real && real.length > 0;
+
+  const { conversations, contacts } = useMemo(() => {
+    if (useReal && real) {
+      const cs: MockContact[] = real.map((r) => {
+        const c = r.contact;
+        return {
+          id: c?.id ?? r.contact_id,
+          name: c?.name ?? "(sem nome)",
+          phone: c?.phone ?? "",
+          city: c?.city ?? "",
+          neighborhood: c?.neighborhood ?? "",
+          customerType: (c?.customer_type ?? "obra") as MockContact["customerType"],
+          interest: "—",
+          stage: (c?.stage ?? "novo") as MockContact["stage"],
+          tags: ((c?.tags as unknown) as string[]) ?? [],
+          intentLevel: "media",
+          objections: [],
+          notes: c?.notes ?? undefined,
+        };
+      });
+      const convs: MockConversation[] = real.map((r) => ({
+        id: r.id,
+        contactId: r.contact_id,
+        status: r.status as ConvStatus,
+        assignedUser: r.assigned_user_id ?? undefined,
+        aiEnabled: r.ai_enabled,
+        needsHuman: r.needs_human,
+        needsHumanReason: r.needs_human_reason ?? undefined,
+        priority: (r.priority as MockConversation["priority"]) ?? "media",
+        lastMessageAt: fmtTime(r.last_message_at),
+        unread: r.unread_count ?? 0,
+        hasAudio: false,
+        aiSummary: r.ai_summary ?? "",
+      }));
+      return { conversations: convs, contacts: cs };
+    }
+    return { conversations: mockConversations, contacts: mockContacts };
+  }, [useReal, real]);
+
+  const getContact = (id: string) => contacts.find((c) => c.id === id);
+
+  const [selectedId, setSelectedId] = useState<string>("");
+  useEffect(() => {
+    if ((!selectedId || !conversations.find((c) => c.id === selectedId)) && conversations[0]) {
+      setSelectedId(conversations[0].id);
+    }
+  }, [conversations, selectedId]);
 
   const list = useMemo(() => {
     return conversations.filter((c) => {
-      const ct = getContact(c.contactId)!;
+      const ct = getContact(c.contactId);
+      if (!ct) return false;
       if (search && !ct.name.toLowerCase().includes(search.toLowerCase())) return false;
       if (filter === "all") return true;
       if (filter === "leads_quentes") return ct.tags.includes("lead_quente");
       return c.status === filter;
     });
-  }, [filter, search]);
+  }, [filter, search, conversations]);
 
-  const selected = conversations.find((c) => c.id === selectedId)!;
-  const contact = getContact(selected.contactId)!;
-  const messages = messagesByConv[selected.id] ?? [];
+  const selected =
+    conversations.find((c) => c.id === selectedId) ?? conversations[0];
+  const contact = selected ? getContact(selected.contactId) : undefined;
+
+  const realMsgs = useRealtimeMessages(useReal && selected ? selected.id : null);
+  const messages: MockMessage[] = useReal
+    ? realMsgs.map((m) => ({
+        id: m.id,
+        conversationId: m.conversation_id,
+        direction: m.direction,
+        senderType: m.sender_type,
+        body: m.body ?? "",
+        messageType: (m.message_type as MockMessage["messageType"]) ?? "text",
+        audioUrl: m.audio_url ?? undefined,
+        transcript: m.transcript ?? undefined,
+        createdAt: fmtTime(m.created_at),
+      }))
+    : selected
+      ? mockMessagesByConv[selected.id] ?? []
+      : [];
+
+  if (!selected || !contact) {
+    return (
+      <AppShell title="Conversas">
+        <div className="p-8 text-sm text-muted-foreground">
+          Nenhuma conversa ainda. Use{" "}
+          <a href="/dev-webhook" className="text-primary underline">
+            Dev Webhook
+          </a>{" "}
+          para simular um payload do n8n.
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell>
