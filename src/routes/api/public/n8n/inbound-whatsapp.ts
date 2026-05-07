@@ -1,14 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import type { N8nInboundPayload } from "@/types/domain";
 
-/**
- * Public endpoint to receive payloads from n8n.
- * URL: /api/n8n/inbound-whatsapp
- *
- * NOTE: For now this accepts any payload (no signature validation).
- * Add an HMAC / shared-secret check before going to production.
- */
-export const Route = createFileRoute("/api/n8n/inbound-whatsapp")({
+export const Route = createFileRoute("/api/public/n8n/inbound-whatsapp")({
   server: {
     handlers: {
       OPTIONS: async () =>
@@ -24,7 +17,7 @@ export const Route = createFileRoute("/api/n8n/inbound-whatsapp")({
           );
           return json(await handleN8nInboundPayloadAdmin(payload));
         } catch (err: any) {
-          console.error("n8n inbound error:", err);
+          console.error("public n8n inbound error:", err);
           return json(
             { success: false, error: err?.message ?? "unknown error" },
             500,

@@ -1,12 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { AppShell } from "@/components/AppShell";
+import { AuthPanel } from "@/components/AuthPanel";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { handleN8nInboundPayload } from "@/services/inboundService";
 import type { N8nInboundPayload } from "@/types/domain";
+import { useAuthSession } from "@/hooks/useAuthSession";
+import { AlertCircle, CheckCircle2, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/dev-webhook")({
@@ -48,12 +52,21 @@ const SAMPLE: N8nInboundPayload = {
 };
 
 function DevWebhook() {
+  const { user, loading: authLoading, isAuthenticated } = useAuthSession();
   const [json, setJson] = useState(JSON.stringify(SAMPLE, null, 2));
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<"client" | "endpoint">("client");
 
+  const needsLogin = mode === "client" && !isAuthenticated;
+
   async function run() {
+    if (needsLogin) {
+      const message = "Faça login para testar o webhook";
+      setResult({ success: false, error: message });
+      toast.error(message);
+      return;
+    }
     setLoading(true);
     setResult(null);
     try {
@@ -62,7 +75,7 @@ function DevWebhook() {
       if (mode === "client") {
         res = await handleN8nInboundPayload(payload);
       } else {
-        const r = await fetch("/api/n8n/inbound-whatsapp", {
+        const r = await fetch("/api/public/n8n/inbound-whatsapp", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
@@ -70,11 +83,20 @@ function DevWebhook() {
         res = await r.json();
       }
       setResult(res);
-      toast.success("Payload processado");
+      if (res?.success) {
+        toast.success("Payload processado com sucesso");
+      } else {
+        throw new Error(res?.error ?? "Falha ao processar payload");
+      }
     } catch (e: any) {
       console.error(e);
-      setResult({ success: false, error: e?.message ?? String(e) });
-      toast.error(e?.message ?? "Falha ao processar payload");
+      const rawMessage = e?.message ?? String(e);
+      const isRls = /row-level security|RLS|42501/i.test(rawMessage);
+      const message = isRls
+        ? "Permissão bloqueada pelo Supabase RLS"
+        : rawMessage || "Falha ao processar payload";
+      setResult({ success: false, error: message, details: isRls ? rawMessage : undefined });
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -83,6 +105,8 @@ function DevWebhook() {
   return (
     <AppShell title="Dev Webhook Tester">
       <div className="p-6 space-y-4 max-w-5xl">
+        {needsLogin && <AuthPanel />}
+
         <Card className="p-4 space-y-3">
           <div className="flex items-center justify-between gap-2 flex-wrap">
             <div>
@@ -90,8 +114,13 @@ function DevWebhook() {
               <p className="text-xs text-muted-foreground">
                 Endpoint real:{" "}
                 <code className="bg-muted px-1.5 py-0.5 rounded">
-                  POST /api/n8n/inbound-whatsapp
+                  POST /api/public/n8n/inbound-whatsapp
                 </code>
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {isAuthenticated
+                  ? `Logado como ${user?.email}`
+                  : "Faça login para testar o webhook via service. O endpoint /api/public roda no backend."}
               </p>
             </div>
             <div className="flex gap-2">
@@ -117,10 +146,19 @@ function DevWebhook() {
                 Resetar payload
               </Button>
               <Button size="sm" onClick={run} disabled={loading}>
-                {loading ? "Enviando..." : "Disparar"}
+                {loading ? "Enviando..." : authLoading ? "Verificando..." : "Disparar"}
               </Button>
             </div>
           </div>
+          {needsLogin && (
+            <Alert className="border-warning/40 bg-warning/10">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Faça login para testar o webhook</AlertTitle>
+              <AlertDescription>
+                O botão “Via service (RLS)” usa as permissões do usuário autenticado.
+              </AlertDescription>
+            </Alert>
+          )}
           <Textarea
             value={json}
             onChange={(e) => setJson(e.target.value)}
@@ -131,6 +169,11 @@ function DevWebhook() {
         {result && (
           <Card className="p-4 space-y-2">
             <div className="flex items-center gap-2">
+              {result.success ? (
+                <CheckCircle2 className="h-4 w-4 text-success" />
+              ) : (
+                <ShieldAlert className="h-4 w-4 text-destructive" />
+              )}
               <Badge
                 className={
                   result.success
@@ -140,7 +183,9 @@ function DevWebhook() {
               >
                 {result.success ? "OK" : "ERRO"}
               </Badge>
-              <span className="text-sm text-muted-foreground">Resultado</span>
+              <span className="text-sm text-muted-foreground">
+                {result.success ? "Payload processado com sucesso" : result.error}
+              </span>
             </div>
             <pre className="text-xs bg-muted p-3 rounded overflow-auto">
               {JSON.stringify(result, null, 2)}
