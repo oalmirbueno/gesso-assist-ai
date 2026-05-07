@@ -54,9 +54,10 @@ const SAMPLE: N8nInboundPayload = {
 function DevWebhook() {
   const { user, loading: authLoading, isAuthenticated } = useAuthSession();
   const [json, setJson] = useState(JSON.stringify(SAMPLE, null, 2));
+  const [secret, setSecret] = useState("");
   const [result, setResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
-  const [mode, setMode] = useState<"client" | "endpoint">("client");
+  const [mode, setMode] = useState<"client" | "endpoint">("endpoint");
 
   const needsLogin = mode === "client" && !isAuthenticated;
 
@@ -77,10 +78,16 @@ function DevWebhook() {
       } else {
         const r = await fetch("/api/public/n8n/inbound-whatsapp", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            ...(secret ? { "x-n8n-secret": secret } : {}),
+          },
           body: JSON.stringify(payload),
         });
         res = await r.json();
+        if (r.status === 401) {
+          throw new Error(res?.error ?? "x-n8n-secret inválido");
+        }
       }
       setResult(res);
       if (res?.success) {
