@@ -19,6 +19,7 @@ import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as AprendizadosRouteImport } from './routes/aprendizados'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApiN8nInboundWhatsappRouteImport } from './routes/api/n8n/inbound-whatsapp'
+import { Route as ApiPublicN8nInboundWhatsappRouteImport } from './routes/api/public/n8n/inbound-whatsapp'
 
 const UsuariosRoute = UsuariosRouteImport.update({
   id: '/usuarios',
@@ -70,6 +71,12 @@ const ApiN8nInboundWhatsappRoute = ApiN8nInboundWhatsappRouteImport.update({
   path: '/api/n8n/inbound-whatsapp',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicN8nInboundWhatsappRoute =
+  ApiPublicN8nInboundWhatsappRouteImport.update({
+    id: '/api/public/n8n/inbound-whatsapp',
+    path: '/api/public/n8n/inbound-whatsapp',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -82,6 +89,7 @@ export interface FileRoutesByFullPath {
   '/objecoes': typeof ObjecoesRoute
   '/usuarios': typeof UsuariosRoute
   '/api/n8n/inbound-whatsapp': typeof ApiN8nInboundWhatsappRoute
+  '/api/public/n8n/inbound-whatsapp': typeof ApiPublicN8nInboundWhatsappRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -94,6 +102,7 @@ export interface FileRoutesByTo {
   '/objecoes': typeof ObjecoesRoute
   '/usuarios': typeof UsuariosRoute
   '/api/n8n/inbound-whatsapp': typeof ApiN8nInboundWhatsappRoute
+  '/api/public/n8n/inbound-whatsapp': typeof ApiPublicN8nInboundWhatsappRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -107,6 +116,7 @@ export interface FileRoutesById {
   '/objecoes': typeof ObjecoesRoute
   '/usuarios': typeof UsuariosRoute
   '/api/n8n/inbound-whatsapp': typeof ApiN8nInboundWhatsappRoute
+  '/api/public/n8n/inbound-whatsapp': typeof ApiPublicN8nInboundWhatsappRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -121,6 +131,7 @@ export interface FileRouteTypes {
     | '/objecoes'
     | '/usuarios'
     | '/api/n8n/inbound-whatsapp'
+    | '/api/public/n8n/inbound-whatsapp'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -133,6 +144,7 @@ export interface FileRouteTypes {
     | '/objecoes'
     | '/usuarios'
     | '/api/n8n/inbound-whatsapp'
+    | '/api/public/n8n/inbound-whatsapp'
   id:
     | '__root__'
     | '/'
@@ -145,6 +157,7 @@ export interface FileRouteTypes {
     | '/objecoes'
     | '/usuarios'
     | '/api/n8n/inbound-whatsapp'
+    | '/api/public/n8n/inbound-whatsapp'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -158,6 +171,7 @@ export interface RootRouteChildren {
   ObjecoesRoute: typeof ObjecoesRoute
   UsuariosRoute: typeof UsuariosRoute
   ApiN8nInboundWhatsappRoute: typeof ApiN8nInboundWhatsappRoute
+  ApiPublicN8nInboundWhatsappRoute: typeof ApiPublicN8nInboundWhatsappRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -232,6 +246,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiN8nInboundWhatsappRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/n8n/inbound-whatsapp': {
+      id: '/api/public/n8n/inbound-whatsapp'
+      path: '/api/public/n8n/inbound-whatsapp'
+      fullPath: '/api/public/n8n/inbound-whatsapp'
+      preLoaderRoute: typeof ApiPublicN8nInboundWhatsappRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -246,7 +267,18 @@ const rootRouteChildren: RootRouteChildren = {
   ObjecoesRoute: ObjecoesRoute,
   UsuariosRoute: UsuariosRoute,
   ApiN8nInboundWhatsappRoute: ApiN8nInboundWhatsappRoute,
+  ApiPublicN8nInboundWhatsappRoute: ApiPublicN8nInboundWhatsappRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
