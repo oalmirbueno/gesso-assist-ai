@@ -5,6 +5,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Check, X, Sparkles } from "lucide-react";
+import { sendLearningFeedbackToN8n } from "@/services/n8nService";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/aprendizados")({
   component: Learn,
