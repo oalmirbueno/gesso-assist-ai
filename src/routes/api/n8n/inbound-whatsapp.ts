@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { handleN8nInboundPayloadAdmin } from "@/services/inboundServerService.server";
 import type { N8nInboundPayload } from "@/types/domain";
 
 /**
@@ -20,6 +19,9 @@ export const Route = createFileRoute("/api/n8n/inbound-whatsapp")({
       POST: async ({ request }) => {
         try {
           const payload = (await request.json()) as N8nInboundPayload;
+          const { handleN8nInboundPayloadAdmin } = await import(
+            "@/services/inboundServerService.server"
+          );
           return json(await handleN8nInboundPayloadAdmin(payload));
         } catch (err: any) {
           console.error("n8n inbound error:", err);
