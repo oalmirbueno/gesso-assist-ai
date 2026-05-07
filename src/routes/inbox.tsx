@@ -379,13 +379,12 @@ function Inbox() {
             <Badge variant="outline" className={statusLabel[selected.status].className}>
               {statusLabel[selected.status].label}
             </Badge>
-            {selected.needsHuman && (
-              <Button size="sm" variant="default">
+            {selected.aiEnabled || selected.needsHuman ? (
+              <Button size="sm" variant="default" disabled={busy} onClick={handleAssumir}>
                 <User className="h-4 w-4 mr-1" /> Assumir
               </Button>
-            )}
-            {!selected.aiEnabled && !selected.needsHuman && (
-              <Button size="sm" variant="outline">
+            ) : (
+              <Button size="sm" variant="outline" disabled={busy} onClick={handleDevolver}>
                 <Bot className="h-4 w-4 mr-1" /> Devolver p/ IA
               </Button>
             )}
