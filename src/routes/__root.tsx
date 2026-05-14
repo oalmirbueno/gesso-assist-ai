@@ -73,10 +73,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "GS Gesso — Atendimento IA" },
+      { title: "GS Gesso, Atendimento IA" },
       { name: "description", content: "Central de atendimento WhatsApp com IA da GS Gesso" },
       { name: "author", content: "GS Gesso" },
-      { property: "og:title", content: "GS Gesso — Atendimento IA" },
+      { property: "og:title", content: "GS Gesso, Atendimento IA" },
       { property: "og:description", content: "Central de atendimento WhatsApp com IA" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

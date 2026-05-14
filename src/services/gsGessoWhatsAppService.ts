@@ -1,5 +1,5 @@
 /**
- * gsGessoWhatsAppService — fachada do painel para o conector seguro.
+ * gsGessoWhatsAppService, fachada do painel para o conector seguro.
  *
  * Toda chamada vai para o server function gsPanelCommand. O frontend NUNCA
  * conhece N8N_PANEL_SECRET nem URLs do n8n.
@@ -29,7 +29,7 @@ export const gsService = {
 };
 
 export function commandToast(r: GsCommandResult) {
-  if (!r.ok) return { type: "error" as const, msg: r.error ?? "Falhou — tentar novamente" };
+  if (!r.ok) return { type: "error" as const, msg: r.error ?? "Falhou, tentar novamente" };
   if (r.pending_connector)
     return { type: "info" as const, msg: "Comando salvo no painel. Conector n8n ainda pendente." };
   return { type: "success" as const, msg: "Comando enviado ao n8n." };
