@@ -382,10 +382,13 @@ function ConversationView({ conv, sellers }: { conv: GsConversation; sellers: Gs
                     </div>
                   )}
                   {m.body && <div className="whitespace-pre-wrap">{m.body}</div>}
-                  <div className={`text-[10px] mt-1 ${inbound ? "text-muted-foreground" : "text-white/70"}`}>
-                    {fmtTime(m.created_at)}
-                    {m.intent && ` · ${m.intent}`}
-                    {m.confidence != null && ` (${Math.round(m.confidence * 100)}%)`}
+                  <div className={`text-[10px] mt-1 flex items-center gap-1.5 ${inbound ? "text-muted-foreground" : "text-white/70"}`}>
+                    <span>{fmtTime(m.created_at)}</span>
+                    {m.intent && <span>· {m.intent}</span>}
+                    {m.confidence != null && <span>({Math.round(m.confidence * 100)}%)</span>}
+                    {!inbound && (m as any).provider_status === "pending" && <span>· aguardando envio</span>}
+                    {!inbound && (m as any).provider_status === "sent" && <span>· enviado</span>}
+                    {!inbound && (m as any).provider_status === "failed" && <span className="text-red-200">· falhou — tentar novamente</span>}
                   </div>
                 </div>
               </div>
