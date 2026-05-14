@@ -18,6 +18,14 @@ import {
   useGsConversations, useGsMessages, useGsTable,
   type GsConversation, type GsSeller, type GsSlot, type GsFact,
 } from "@/hooks/useGsRealtime";
+import { gsService, commandToast, type GsCommandResult } from "@/services/gsGessoWhatsAppService";
+
+function runToast(r: GsCommandResult) {
+  const t = commandToast(r);
+  if (t.type === "success") toast.success(t.msg);
+  else if (t.type === "info") toast.info(t.msg);
+  else toast.error(t.msg);
+}
 
 export const Route = createFileRoute("/whatsapp")({
   component: WhatsAppCockpit,
@@ -277,42 +285,31 @@ function ConversationView({ conv, sellers }: { conv: GsConversation; sellers: Gs
   }
 
   async function takeOver() {
-    await supabase.from("gs_whatsapp_conversations" as any)
-      .update({ ai_enabled: false, status: "em_atendimento", needs_human: false })
-      .eq("id", conv.id);
-    await logEvent("human_taken_over");
-    notReady("Assumir atendimento");
+    runToast(await gsService.pauseAi(conv.id, "human_assumed"));
   }
   async function returnToAi() {
-    await supabase.from("gs_whatsapp_conversations" as any)
-      .update({ ai_enabled: true, needs_human: false })
-      .eq("id", conv.id);
-    await logEvent("returned_to_ai");
-    notReady("Devolver para IA");
+    runToast(await gsService.resumeAi(conv.id));
   }
   async function markResolved() {
-    await supabase.from("gs_whatsapp_conversations" as any)
-      .update({ status: "resolvida", needs_human: false })
-      .eq("id", conv.id);
-    await logEvent("resolved");
-    toast.success("Conversa marcada como resolvida");
+    const r = await gsService.markResolved(conv.id);
+    if (r.ok) toast.success("Conversa marcada como resolvida");
+    else toast.error(r.error ?? "Falhou");
   }
-  async function changeSeller(sellerId: string) {
-    await supabase.from("gs_whatsapp_conversations" as any)
-      .update({ current_seller_id: sellerId })
-      .eq("id", conv.id);
-    await logEvent("seller_changed", { seller_id: sellerId });
-    toast.success("Vendedor/persona atualizado");
+  async function changeSeller(sellerKey: string) {
+    const r = await gsService.changeSeller(conv.id, sellerKey);
+    if (r.ok) toast.success("Vendedor/persona atualizado");
+    else toast.error(r.error ?? "Falhou");
   }
   async function requestDraft() {
-    await logEvent("draft_requested");
-    notReady("Gerar rascunho com IA");
+    const r = await gsService.requestDraft(conv.id);
+    runToast(r);
+    if (r.ok && r.draft) setDraft(r.draft);
   }
   async function sendDraft() {
     if (!draft.trim()) return;
-    await logEvent("human_outbound_queued", { body: draft });
-    notReady("Enviar para WhatsApp");
+    const text = draft;
     setDraft("");
+    runToast(await gsService.sendHumanMessage(conv.id, text));
   }
 
   const currentSeller = sellers.find((s) => s.id === conv.current_seller_id);
@@ -331,11 +328,11 @@ function ConversationView({ conv, sellers }: { conv: GsConversation; sellers: Gs
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Select value={conv.current_seller_id ?? ""} onValueChange={changeSeller}>
+          <Select value={currentSeller?.key ?? ""} onValueChange={changeSeller}>
             <SelectTrigger className="h-8 w-44 text-xs"><SelectValue placeholder="Vendedor / persona" /></SelectTrigger>
             <SelectContent>
               {sellers.map((s) => (
-                <SelectItem key={s.id} value={s.id} className="text-xs">
+                <SelectItem key={s.id} value={s.key} className="text-xs">
                   {s.name} {!s.active && "(inativo)"}
                 </SelectItem>
               ))}
@@ -385,10 +382,13 @@ function ConversationView({ conv, sellers }: { conv: GsConversation; sellers: Gs
                     </div>
                   )}
                   {m.body && <div className="whitespace-pre-wrap">{m.body}</div>}
-                  <div className={`text-[10px] mt-1 ${inbound ? "text-muted-foreground" : "text-white/70"}`}>
-                    {fmtTime(m.created_at)}
-                    {m.intent && ` · ${m.intent}`}
-                    {m.confidence != null && ` (${Math.round(m.confidence * 100)}%)`}
+                  <div className={`text-[10px] mt-1 flex items-center gap-1.5 ${inbound ? "text-muted-foreground" : "text-white/70"}`}>
+                    <span>{fmtTime(m.created_at)}</span>
+                    {m.intent && <span>· {m.intent}</span>}
+                    {m.confidence != null && <span>({Math.round(m.confidence * 100)}%)</span>}
+                    {!inbound && (m as any).provider_status === "pending" && <span>· aguardando envio</span>}
+                    {!inbound && (m as any).provider_status === "sent" && <span>· enviado</span>}
+                    {!inbound && (m as any).provider_status === "failed" && <span className="text-red-200">· falhou — tentar novamente</span>}
                   </div>
                 </div>
               </div>
