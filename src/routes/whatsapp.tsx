@@ -18,6 +18,14 @@ import {
   useGsConversations, useGsMessages, useGsTable,
   type GsConversation, type GsSeller, type GsSlot, type GsFact,
 } from "@/hooks/useGsRealtime";
+import { gsService, commandToast, type GsCommandResult } from "@/services/gsGessoWhatsAppService";
+
+function runToast(r: GsCommandResult) {
+  const t = commandToast(r);
+  if (t.type === "success") toast.success(t.msg);
+  else if (t.type === "info") toast.info(t.msg);
+  else toast.error(t.msg);
+}
 
 export const Route = createFileRoute("/whatsapp")({
   component: WhatsAppCockpit,
