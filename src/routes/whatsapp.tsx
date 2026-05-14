@@ -14,7 +14,7 @@ import {
   Activity, X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useEffect } from "react";
+
 import { supabase } from "@/integrations/supabase/client";
 import {
   useGsConversations, useGsMessages, useGsTable,
