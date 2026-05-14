@@ -322,46 +322,85 @@ function NoConversationSelected() {
 /* ============== CONVERSATION VIEW ============== */
 function ConversationView({ conv, sellers }: { conv: GsConversation; sellers: GsSeller[] }) {
   const messages = useGsMessages(conv.id);
+  const events = useGsEvents(conv.id);
   const [draft, setDraft] = useState("");
+  const [aiDraft, setAiDraft] = useState<{ text: string; pending: boolean } | null>(null);
+  const [showAudit, setShowAudit] = useState(false);
+  const [busy, setBusy] = useState<string | null>(null);
 
-  function notReady(action: string) {
-    toast.info(`${action}: depende do conector n8n`, {
-      description: "Aguardando endpoint seguro para envio. A ação foi registrada na auditoria.",
-    });
-  }
-
-  async function logEvent(event_type: string, payload: any = {}) {
-    await supabase.from("gs_whatsapp_events" as any).insert({
-      conversation_id: conv.id, event_type, payload,
-    });
-  }
+  // Sincroniza rascunho persistido (vindo via realtime/n8n) com a UI local.
+  useEffect(() => {
+    if (conv.ai_draft_reply) setAiDraft({ text: conv.ai_draft_reply, pending: false });
+  }, [conv.ai_draft_reply]);
 
   async function takeOver() {
-    runToast(await gsService.pauseAi(conv.id, "human_assumed"));
+    setBusy("take");
+    const r = await gsService.pauseAi(conv.id, "human_assumed");
+    setBusy(null);
+    commandFeedback(r, {
+      success: "Conversa assumida.",
+      pending: "Conversa assumida no painel. Conector n8n ainda pendente.",
+      error: "Não foi possível assumir a conversa.",
+    });
   }
   async function returnToAi() {
-    runToast(await gsService.resumeAi(conv.id));
+    setBusy("return");
+    const r = await gsService.resumeAi(conv.id);
+    setBusy(null);
+    commandFeedback(r, {
+      success: "IA religada para esta conversa.",
+      pending: "IA religada no painel. Conector n8n ainda pendente.",
+      error: "Não foi possível devolver para a IA.",
+    });
   }
   async function markResolved() {
     const r = await gsService.markResolved(conv.id);
-    if (r.ok) toast.success("Conversa marcada como resolvida");
-    else toast.error(r.error ?? "Falhou");
+    commandFeedback(r, { success: "Conversa marcada como resolvida.", error: "Não foi possível resolver." });
   }
   async function changeSeller(sellerKey: string) {
     const r = await gsService.changeSeller(conv.id, sellerKey);
-    if (r.ok) toast.success("Vendedor/persona atualizado");
-    else toast.error(r.error ?? "Falhou");
+    commandFeedback(r, { success: "Vendedor/persona atualizado.", error: "Não foi possível trocar o vendedor." });
   }
   async function requestDraft() {
+    setBusy("draft");
     const r = await gsService.requestDraft(conv.id);
-    runToast(r);
-    if (r.ok && r.draft) setDraft(r.draft);
+    setBusy(null);
+    if (!r.ok) {
+      toast.error("Não foi possível gerar rascunho.");
+      return;
+    }
+    if (r.pending_connector) {
+      setAiDraft({ text: "", pending: true });
+      toast.info("Rascunho depende do conector n8n.", {
+        description: "A solicitação ficou registrada. Quando o n8n responder, o rascunho aparece aqui.",
+      });
+      return;
+    }
+    if (r.draft) {
+      setAiDraft({ text: r.draft, pending: false });
+      toast.success("Rascunho gerado pela IA.");
+    } else {
+      toast.info("IA não devolveu rascunho desta vez.");
+    }
   }
-  async function sendDraft() {
-    if (!draft.trim()) return;
-    const text = draft;
+  async function sendHuman() {
+    const text = draft.trim();
+    if (!text) return;
+    setBusy("send");
     setDraft("");
-    runToast(await gsService.sendHumanMessage(conv.id, text));
+    const r = await gsService.sendHumanMessage(conv.id, text);
+    setBusy(null);
+    commandFeedback(r, {
+      success: "Mensagem enviada.",
+      pending: "Mensagem salva. Envio real depende do conector n8n.",
+      error: "Falha ao enviar — tentar novamente.",
+    });
+  }
+  function onComposerKey(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      sendHuman();
+    }
   }
 
   const currentSeller = sellers.find((s) => s.id === conv.current_seller_id);
@@ -391,21 +430,33 @@ function ConversationView({ conv, sellers }: { conv: GsConversation; sellers: Gs
             </SelectContent>
           </Select>
           {conv.ai_enabled
-            ? <Button size="sm" variant="outline" onClick={takeOver}><UserCheck className="h-3.5 w-3.5 mr-1.5" />Assumir</Button>
-            : <Button size="sm" variant="outline" onClick={returnToAi}><Bot className="h-3.5 w-3.5 mr-1.5" />Devolver IA</Button>
+            ? <Button size="sm" variant="outline" onClick={takeOver} disabled={busy === "take"}>
+                <UserCheck className="h-3.5 w-3.5 mr-1.5" />Assumir conversa
+              </Button>
+            : <Button size="sm" variant="outline" onClick={returnToAi} disabled={busy === "return"}>
+                <Bot className="h-3.5 w-3.5 mr-1.5" />Devolver para IA
+              </Button>
           }
-          <Button size="sm" variant="ghost" onClick={markResolved}><CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />Resolvida</Button>
+          <Button size="sm" variant="ghost" onClick={markResolved}>
+            <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" />Resolvida
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => setShowAudit((v) => !v)} title="Eventos recentes">
+            <Activity className="h-3.5 w-3.5" />
+          </Button>
         </div>
       </header>
 
       {/* AI status strip */}
-      {(conv.last_ai_action || currentSeller || conv.needs_human_reason) && (
-        <div className="px-4 py-1.5 border-b bg-muted/40 text-[11px] text-muted-foreground flex items-center gap-3 flex-wrap">
-          {currentSeller && <span><Bot className="h-3 w-3 inline mr-1" />{currentSeller.name}</span>}
-          {conv.last_ai_action && <span>última ação: <span className="text-foreground">{conv.last_ai_action}</span></span>}
-          {conv.needs_human && <span className="text-amber-600">⚠ {conv.needs_human_reason ?? "precisa humano"}</span>}
-        </div>
-      )}
+      <div className="px-4 py-1.5 border-b bg-muted/40 text-[11px] text-muted-foreground flex items-center gap-3 flex-wrap">
+        {conv.ai_enabled ? (
+          <span className="text-emerald-600 flex items-center gap-1"><Bot className="h-3 w-3" /> IA ligada</span>
+        ) : (
+          <span className="text-amber-600 flex items-center gap-1"><UserCheck className="h-3 w-3" /> Atendimento humano</span>
+        )}
+        {currentSeller && <span>· {currentSeller.name}</span>}
+        {conv.last_ai_action && <span>· última ação: <span className="text-foreground">{conv.last_ai_action}</span></span>}
+        {conv.needs_human && <span className="text-amber-600">· ⚠ {conv.needs_human_reason ?? "precisa humano"}</span>}
+      </div>
 
       {/* messages */}
       <ScrollArea className="flex-1 p-4 bg-muted/20">
@@ -415,6 +466,7 @@ function ConversationView({ conv, sellers }: { conv: GsConversation; sellers: Gs
           )}
           {messages.map((m) => {
             const inbound = m.direction === "inbound";
+            const ps = (m as any).provider_status as string | undefined;
             return (
               <div key={m.id} className={`flex ${inbound ? "justify-start" : "justify-end"}`}>
                 <div className={`max-w-[75%] rounded-lg px-3 py-2 text-sm shadow-sm ${
@@ -425,9 +477,7 @@ function ConversationView({ conv, sellers }: { conv: GsConversation; sellers: Gs
                       {m.sender_type === "ai" ? "IA" : "Humano"}
                     </div>
                   )}
-                  {m.audio_url && (
-                    <audio controls src={m.audio_url} className="mb-1 max-w-full h-8" />
-                  )}
+                  {m.audio_url && <audio controls src={m.audio_url} className="mb-1 max-w-full h-8" />}
                   {m.transcript && (
                     <div className={`text-[11px] italic mb-1 ${inbound ? "text-muted-foreground" : "text-white/80"}`}>
                       🎙 {m.transcript}
@@ -438,9 +488,9 @@ function ConversationView({ conv, sellers }: { conv: GsConversation; sellers: Gs
                     <span>{fmtTime(m.created_at)}</span>
                     {m.intent && <span>· {m.intent}</span>}
                     {m.confidence != null && <span>({Math.round(m.confidence * 100)}%)</span>}
-                    {!inbound && (m as any).provider_status === "pending" && <span>· aguardando envio</span>}
-                    {!inbound && (m as any).provider_status === "sent" && <span>· enviado</span>}
-                    {!inbound && (m as any).provider_status === "failed" && <span className="text-red-200">· falhou — tentar novamente</span>}
+                    {!inbound && ps === "pending" && <span>· aguardando envio</span>}
+                    {!inbound && ps === "sent" && <span>· enviado</span>}
+                    {!inbound && ps === "failed" && <span className="text-red-200">· falhou — tentar novamente</span>}
                   </div>
                 </div>
               </div>
@@ -449,35 +499,88 @@ function ConversationView({ conv, sellers }: { conv: GsConversation; sellers: Gs
         </div>
       </ScrollArea>
 
+      {/* eventos recentes (auditoria) */}
+      {showAudit && (
+        <div className="border-t bg-card/70 px-4 py-2 max-h-44 overflow-auto">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+              <Activity className="h-3 w-3" />Eventos recentes
+            </span>
+            <button onClick={() => setShowAudit(false)} className="text-muted-foreground hover:text-foreground">
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+          {events.length === 0 && (
+            <div className="text-[11px] text-muted-foreground py-2">Sem eventos registrados ainda.</div>
+          )}
+          <ul className="space-y-1">
+            {events.map((ev) => {
+              const pending = ev.event_type === "connector_pending";
+              return (
+                <li key={ev.id} className="text-[11px] flex items-center gap-2 font-mono">
+                  <span className="text-muted-foreground w-12 shrink-0">{fmtTime(ev.created_at)}</span>
+                  <span className={pending ? "text-amber-600" : "text-foreground"}>{ev.event_type}</span>
+                  {pending && <span className="text-muted-foreground">· conector n8n ainda pendente</span>}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
       {/* draft IA */}
-      {conv.ai_draft_reply && (
+      {aiDraft && (
         <div className="border-t bg-sky-500/5 p-3">
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-[11px] font-medium text-sky-600 flex items-center gap-1.5">
               <Sparkles className="h-3 w-3" />Rascunho da IA
+              {conv.ai_confidence != null && (
+                <span className="text-muted-foreground font-normal">· {Math.round(conv.ai_confidence * 100)}% confiança</span>
+              )}
             </span>
-            <Button size="sm" variant="ghost" className="h-6 text-[11px]"
-              onClick={() => setDraft(conv.ai_draft_reply ?? "")}>Usar rascunho</Button>
+            <div className="flex gap-1">
+              {!aiDraft.pending && aiDraft.text && (
+                <Button size="sm" variant="ghost" className="h-6 text-[11px]"
+                  onClick={() => { setDraft(aiDraft.text); }}>
+                  Usar no campo
+                </Button>
+              )}
+              <Button size="sm" variant="ghost" className="h-6 text-[11px]"
+                onClick={() => setAiDraft(null)}>
+                Descartar
+              </Button>
+            </div>
           </div>
-          <p className="text-xs text-foreground/80 italic">"{conv.ai_draft_reply}"</p>
+          {aiDraft.pending ? (
+            <p className="text-xs text-muted-foreground italic">
+              Rascunho depende do conector n8n. Aguardando resposta…
+            </p>
+          ) : (
+            <p className="text-xs text-foreground/80 italic whitespace-pre-wrap">"{aiDraft.text}"</p>
+          )}
         </div>
       )}
 
       {/* composer */}
       <div className="border-t p-3 bg-card">
         <div className="flex gap-2 items-end">
-          <Textarea value={draft} onChange={(e) => setDraft(e.target.value)}
-            placeholder="Mensagem para o cliente (envio depende do conector n8n)…"
+          <Textarea value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={onComposerKey}
+            placeholder="Escreva sua resposta para o cliente… (Enter envia, Shift+Enter quebra linha)"
             className="min-h-[60px] resize-none text-sm" />
           <div className="flex flex-col gap-2">
-            <Button size="sm" variant="outline" onClick={requestDraft}>
-              <Sparkles className="h-3.5 w-3.5 mr-1.5" />Rascunho IA
+            <Button size="sm" variant="outline" onClick={requestDraft} disabled={busy === "draft"}>
+              <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+              {busy === "draft" ? "Gerando…" : "Rascunho IA"}
             </Button>
-            <Button size="sm" onClick={sendDraft} disabled={!draft.trim()}>
-              <Send className="h-3.5 w-3.5 mr-1.5" />Enviar
+            <Button size="sm" onClick={sendHuman} disabled={!draft.trim() || busy === "send"}>
+              <Send className="h-3.5 w-3.5 mr-1.5" />
+              {busy === "send" ? "Enviando…" : "Enviar resposta"}
             </Button>
           </div>
         </div>
+        <p className="text-[10px] text-muted-foreground mt-1.5">
+          Ao enviar, a IA pausa automaticamente nesta conversa. Devolva para a IA quando terminar.
+        </p>
       </div>
     </>
   );
