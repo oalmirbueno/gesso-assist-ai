@@ -76,11 +76,13 @@ export function AppSidebar() {
           collapsed ? "justify-center px-2" : "gap-3 px-3"
         }`}
       >
-        {!collapsed && (
+        {collapsed ? null : (
           <>
-            <div className="h-10 w-10 shrink-0 rounded-xl bg-primary grid place-items-center text-primary-foreground font-black text-lg shadow-md">
-              GS
-            </div>
+            <img
+              src={gsLogo}
+              alt="GS Gesso"
+              className="h-10 w-10 shrink-0 object-contain"
+            />
             <div className="flex flex-col leading-tight min-w-0 flex-1">
               <span className="text-sm font-bold tracking-wide truncate">GS GESSO</span>
               <span className="text-[10px] text-sidebar-foreground/60 uppercase tracking-wider truncate">
