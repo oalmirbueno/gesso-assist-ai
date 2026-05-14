@@ -123,7 +123,7 @@ function CRM() {
         </>
       }
     >
-      <div className="p-6 h-[calc(100vh-4rem)] overflow-x-auto">
+      <div className="p-6 h-full overflow-x-auto overflow-y-hidden">
         {loading ? (
           <div className="h-full grid place-items-center text-muted-foreground">
             <Loader2 className="h-6 w-6 animate-spin" />
