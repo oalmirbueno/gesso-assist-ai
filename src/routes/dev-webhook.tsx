@@ -216,7 +216,7 @@ function DevWebhook() {
             </pre>
             {result.success && (
               <p className="text-xs text-muted-foreground">
-                Verifique a Inbox — a conversa deve aparecer no topo com o
+                Verifique a Inbox, a conversa deve aparecer no topo com o
                 rascunho da IA e o status “precisa humano”.
               </p>
             )}

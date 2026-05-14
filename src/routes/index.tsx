@@ -134,7 +134,7 @@ function Dashboard() {
               Sua IA atende como um vendedor humano. Você só intervém quando precisar.
             </h2>
             <p className="text-sm text-background/70 mt-2">
-              O painel acompanha cada conversa em tempo real — assuma, devolva para a
+              O painel acompanha cada conversa em tempo real, assuma, devolva para a
               IA, treine respostas e mantenha o pipeline organizado.
             </p>
           </div>
@@ -150,7 +150,7 @@ function Dashboard() {
                   <Icon className="h-5 w-5" />
                 </div>
                 <p className="text-3xl font-bold tracking-tight">
-                  {loading ? "—" : c.value}
+                  {loading ? "·" : c.value}
                 </p>
                 <p className="text-xs text-muted-foreground mt-1">{c.label}</p>
               </Card>
@@ -247,7 +247,7 @@ function toneClass(tone: string) {
 }
 
 function previewPayload(p: Record<string, unknown> | null) {
-  if (!p) return "—";
+  if (!p) return "·";
   const candidate = p.reason ?? p.message ?? p.body ?? p.seller_key ?? p.intent;
   if (typeof candidate === "string") return candidate;
   return JSON.stringify(p).slice(0, 120);

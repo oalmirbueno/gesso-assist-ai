@@ -153,7 +153,7 @@ export async function insertConversationEvent(
 }
 
 /**
- * Main entry point — handle a payload coming from n8n.
+ * Main entry point, handle a payload coming from n8n.
  * Persists contact, conversation, message and emits events.
  *
  * Steps:

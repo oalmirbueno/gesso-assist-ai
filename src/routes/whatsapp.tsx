@@ -22,7 +22,7 @@ import {
 } from "@/hooks/useGsRealtime";
 import { gsService, type GsCommandResult } from "@/services/gsGessoWhatsAppService";
 
-/** Toast curado por comando — fala da equipe GS, não jargão técnico. */
+/** Toast curado por comando, fala da equipe GS, não jargão técnico. */
 function commandFeedback(
   r: GsCommandResult,
   copy: { success: string; pending?: string; error: string },
@@ -83,7 +83,7 @@ export const Route = createFileRoute("/whatsapp")({
   component: WhatsAppCockpit,
   head: () => ({
     meta: [
-      { title: "Atendimento WhatsApp — GS Gesso" },
+      { title: "Atendimento WhatsApp, GS Gesso" },
       { name: "description", content: "Cockpit de atendimento WhatsApp com IA, CRM e agenda da GS Gesso." },
     ],
   }),
@@ -206,7 +206,7 @@ function InboxView() {
         <StatCard icon={MessageSquare} label="Conversas ativas" value={stats.ativas} tone="info" />
         <StatCard icon={AlertTriangle} label="Precisam humano" value={stats.human} tone="warn" />
         <StatCard icon={Bot} label="IA ativa" value={stats.ia} tone="ok" />
-        <StatCard icon={Mic} label="Áudios hoje" value="—" />
+        <StatCard icon={Mic} label="Áudios hoje" value="·" />
         <StatCard icon={FileText} label="Orçamentos abertos" value={stats.orc} />
         <StatCard icon={Headphones} label="Vendedores ativos" value={stats.sellersOk} tone="ok" />
       </div>
@@ -393,7 +393,7 @@ function ConversationView({ conv, sellers }: { conv: GsConversation; sellers: Gs
     commandFeedback(r, {
       success: "Mensagem enviada.",
       pending: "Mensagem salva. Envio real depende do conector n8n.",
-      error: "Falha ao enviar — tentar novamente.",
+      error: "Falha ao enviar, tentar novamente.",
     });
   }
   function onComposerKey(e: KeyboardEvent<HTMLTextAreaElement>) {
@@ -490,7 +490,7 @@ function ConversationView({ conv, sellers }: { conv: GsConversation; sellers: Gs
                     {m.confidence != null && <span>({Math.round(m.confidence * 100)}%)</span>}
                     {!inbound && ps === "pending" && <span>· aguardando envio</span>}
                     {!inbound && ps === "sent" && <span>· enviado</span>}
-                    {!inbound && ps === "failed" && <span className="text-red-200">· falhou — tentar novamente</span>}
+                    {!inbound && ps === "failed" && <span className="text-red-200">· falhou, tentar novamente</span>}
                   </div>
                 </div>
               </div>
@@ -656,7 +656,7 @@ function Field({ label, value, className = "" }: { label: string; value?: string
   return (
     <div className={className}>
       <div className="text-[10px] uppercase tracking-wide text-muted-foreground">{label}</div>
-      <div className="text-foreground/90">{value || <span className="text-muted-foreground">—</span>}</div>
+      <div className="text-foreground/90">{value || <span className="text-muted-foreground">·</span>}</div>
     </div>
   );
 }
@@ -808,7 +808,7 @@ function BaseView() {
         <div>
           <h2 className="text-lg font-semibold">Base comercial</h2>
           <p className="text-xs text-muted-foreground">
-            Fonte de verdade da IA. Só é usada quando o n8n consulta — a IA não inventa preço, prazo ou estoque.
+            Fonte de verdade da IA. Só é usada quando o n8n consulta, a IA não inventa preço, prazo ou estoque.
           </p>
         </div>
         <Button size="sm" onClick={() => setCreating((v) => !v)}>{creating ? "Cancelar" : "+ Novo fato"}</Button>

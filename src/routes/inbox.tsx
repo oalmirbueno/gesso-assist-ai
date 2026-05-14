@@ -100,7 +100,7 @@ function Inbox() {
           city: c?.city ?? "",
           neighborhood: c?.neighborhood ?? "",
           customerType: (c?.customer_type ?? "obra") as MockContact["customerType"],
-          interest: "—",
+          interest: "·",
           stage: (c?.stage ?? "novo") as MockContact["stage"],
           tags: ((c?.tags as unknown) as string[]) ?? [],
           intentLevel: "media",
@@ -263,7 +263,7 @@ function Inbox() {
       if (r.success) {
         toast.success(
           r.dryRun
-            ? "Mensagem aceita pelo n8n (dry_run — envio WhatsApp será ativado depois)"
+            ? "Mensagem aceita pelo n8n (dry_run, envio WhatsApp será ativado depois)"
             : "Mensagem enviada via n8n",
         );
         setDraft("");
@@ -554,7 +554,7 @@ function Inbox() {
             <Field label="Tipo de cliente" value={contact.customerType} />
             <Field label="Interesse principal" value={contact.interest} />
             <Field label="Etapa do funil" value={contact.stage} />
-            <Field label="Responsável" value={contact.responsible ?? "—"} />
+            <Field label="Responsável" value={contact.responsible ?? "·"} />
           </Section>
           <Section title="Tags">
             <div className="flex flex-wrap gap-1">
@@ -597,7 +597,7 @@ function Inbox() {
             <p className="text-xs text-muted-foreground">Confirmar metragem e agendar visita técnica.</p>
           </Section>
           <Section title="Observações">
-            <p className="text-xs text-muted-foreground">{contact.notes ?? "—"}</p>
+            <p className="text-xs text-muted-foreground">{contact.notes ?? "·"}</p>
           </Section>
         </div>
       </div>

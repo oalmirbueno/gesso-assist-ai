@@ -1,5 +1,5 @@
 /**
- * n8nService — ponte do painel Lovable para o n8n.
+ * n8nService, ponte do painel Lovable para o n8n.
  *
  * IMPORTANTE: O n8n é o cérebro do atendimento. Este serviço SOMENTE chama
  * o endpoint interno /api/n8n/proxy, que roda no servidor e injeta o header

@@ -76,7 +76,7 @@ function Settings() {
             necessário. Nunca inventa preço, prazo ou estoque.
           </p>
           <div>
-            <Label>Persona / instruções base (referência — fonte da verdade está no n8n)</Label>
+            <Label>Persona / instruções base (referência, fonte da verdade está no n8n)</Label>
             <Textarea
               rows={5}
               defaultValue={
@@ -105,7 +105,7 @@ function Settings() {
             Webhooks reais já configurados no servidor. O segredo
             <code className="bg-muted px-1 rounded mx-1">N8N_PANEL_SECRET</code>
             é injetado no header <code className="bg-muted px-1 rounded">x-n8n-secret</code>
-            apenas no backend — nunca exposto ao browser.
+            apenas no backend, nunca exposto ao browser.
           </p>
           <div className="grid gap-1.5">
             {N8N_ENDPOINTS.map((ep) => (
@@ -145,7 +145,7 @@ function Settings() {
                 )}
                 <span className="font-medium">Última resposta</span>
                 <span className="ml-auto text-muted-foreground">
-                  HTTP {lastResult.status ?? "—"}
+                  HTTP {lastResult.status ?? "·"}
                 </span>
               </div>
               <pre className="bg-muted/50 border rounded p-2 overflow-auto text-[11px]">

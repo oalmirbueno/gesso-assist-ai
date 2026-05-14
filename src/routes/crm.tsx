@@ -105,7 +105,7 @@ function CRM() {
   return (
     <AppShell
       title="CRM Kanban"
-      subtitle="Pipeline comercial — dados reais do WhatsApp da GS Gesso"
+      subtitle="Pipeline comercial, dados reais do WhatsApp da GS Gesso"
       actions={
         <>
           <div className="relative">
