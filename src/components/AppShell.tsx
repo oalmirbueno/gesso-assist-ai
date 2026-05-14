@@ -31,7 +31,7 @@ export function AppShell({
             {actions && <div className="flex items-center gap-2">{actions}</div>}
           </header>
         )}
-        <main className="flex-1 min-h-0 min-w-0 overflow-auto">{children}</main>
+        <main className="flex-1 min-h-0 min-w-0 overflow-y-auto overflow-x-hidden">{children}</main>
       </div>
     </div>
   );
