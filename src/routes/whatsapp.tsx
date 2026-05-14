@@ -396,7 +396,7 @@ function ConversationView({ conv, sellers }: { conv: GsConversation; sellers: Gs
       error: "Falha ao enviar — tentar novamente.",
     });
   }
-  function onComposerKey(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+  function onComposerKey(e: KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       sendHuman();
