@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuthSession } from "@/hooks/useAuthSession";
+import gsLogo from "@/assets/gs-gesso-logo.png";
 
 const groups: { label: string; items: { to: string; label: string; icon: typeof LayoutDashboard }[] }[] = [
   {
