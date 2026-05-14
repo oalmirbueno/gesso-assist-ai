@@ -183,9 +183,6 @@ function StatCard({ icon: Icon, label, value, tone = "default" }: any) {
     </div>
   );
 }
-  );
-}
-
 /* ============== INBOX ============== */
 function InboxView() {
   const { data: conversations, loading } = useGsConversations();
