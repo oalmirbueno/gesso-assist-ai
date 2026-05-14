@@ -212,6 +212,333 @@ export type Database = {
           },
         ]
       }
+      gs_availability_slots: {
+        Row: {
+          created_at: string
+          ends_at: string
+          id: string
+          notes: string | null
+          seller_id: string | null
+          source: string
+          starts_at: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          ends_at: string
+          id?: string
+          notes?: string | null
+          seller_id?: string | null
+          source?: string
+          starts_at: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          ends_at?: string
+          id?: string
+          notes?: string | null
+          seller_id?: string | null
+          source?: string
+          starts_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gs_availability_slots_seller_id_fkey"
+            columns: ["seller_id"]
+            isOneToOne: false
+            referencedRelation: "gs_sellers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gs_commercial_facts: {
+        Row: {
+          active: boolean
+          created_at: string
+          fact_type: string
+          id: string
+          key: string
+          metadata: Json
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          fact_type: string
+          id?: string
+          key: string
+          metadata?: Json
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          fact_type?: string
+          id?: string
+          key?: string
+          metadata?: Json
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
+      gs_sellers: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          key: string
+          name: string
+          persona_prompt: string | null
+          role: string
+          schedule: Json
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          key: string
+          name: string
+          persona_prompt?: string | null
+          role?: string
+          schedule?: Json
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          key?: string
+          name?: string
+          persona_prompt?: string | null
+          role?: string
+          schedule?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      gs_whatsapp_contacts: {
+        Row: {
+          city: string | null
+          created_at: string
+          id: string
+          interest: string | null
+          name: string | null
+          neighborhood: string | null
+          next_action: string | null
+          notes: string | null
+          phone: string
+          responsible_seller_id: string | null
+          source: string | null
+          stage: string
+          tags: Json
+          updated_at: string
+        }
+        Insert: {
+          city?: string | null
+          created_at?: string
+          id?: string
+          interest?: string | null
+          name?: string | null
+          neighborhood?: string | null
+          next_action?: string | null
+          notes?: string | null
+          phone: string
+          responsible_seller_id?: string | null
+          source?: string | null
+          stage?: string
+          tags?: Json
+          updated_at?: string
+        }
+        Update: {
+          city?: string | null
+          created_at?: string
+          id?: string
+          interest?: string | null
+          name?: string | null
+          neighborhood?: string | null
+          next_action?: string | null
+          notes?: string | null
+          phone?: string
+          responsible_seller_id?: string | null
+          source?: string | null
+          stage?: string
+          tags?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      gs_whatsapp_conversations: {
+        Row: {
+          ai_confidence: number | null
+          ai_draft_reply: string | null
+          ai_enabled: boolean
+          ai_last_decision: Json | null
+          contact_id: string
+          created_at: string
+          current_seller_id: string | null
+          funnel_stage: string | null
+          id: string
+          intent: string | null
+          last_ai_action: string | null
+          last_message_at: string | null
+          needs_human: boolean
+          needs_human_reason: string | null
+          status: string
+          unread_count: number
+          updated_at: string
+        }
+        Insert: {
+          ai_confidence?: number | null
+          ai_draft_reply?: string | null
+          ai_enabled?: boolean
+          ai_last_decision?: Json | null
+          contact_id: string
+          created_at?: string
+          current_seller_id?: string | null
+          funnel_stage?: string | null
+          id?: string
+          intent?: string | null
+          last_ai_action?: string | null
+          last_message_at?: string | null
+          needs_human?: boolean
+          needs_human_reason?: string | null
+          status?: string
+          unread_count?: number
+          updated_at?: string
+        }
+        Update: {
+          ai_confidence?: number | null
+          ai_draft_reply?: string | null
+          ai_enabled?: boolean
+          ai_last_decision?: Json | null
+          contact_id?: string
+          created_at?: string
+          current_seller_id?: string | null
+          funnel_stage?: string | null
+          id?: string
+          intent?: string | null
+          last_ai_action?: string | null
+          last_message_at?: string | null
+          needs_human?: boolean
+          needs_human_reason?: string | null
+          status?: string
+          unread_count?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gs_whatsapp_conversations_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "gs_whatsapp_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gs_whatsapp_conversations_current_seller_id_fkey"
+            columns: ["current_seller_id"]
+            isOneToOne: false
+            referencedRelation: "gs_sellers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gs_whatsapp_events: {
+        Row: {
+          conversation_id: string | null
+          created_at: string
+          event_type: string
+          id: string
+          payload: Json | null
+        }
+        Insert: {
+          conversation_id?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          payload?: Json | null
+        }
+        Update: {
+          conversation_id?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          payload?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gs_whatsapp_events_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "gs_whatsapp_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gs_whatsapp_messages: {
+        Row: {
+          audio_url: string | null
+          body: string | null
+          confidence: number | null
+          conversation_id: string
+          created_at: string
+          direction: string
+          id: string
+          intent: string | null
+          message_type: string
+          provider_message_id: string | null
+          raw: Json | null
+          sender_type: string
+          transcript: string | null
+        }
+        Insert: {
+          audio_url?: string | null
+          body?: string | null
+          confidence?: number | null
+          conversation_id: string
+          created_at?: string
+          direction: string
+          id?: string
+          intent?: string | null
+          message_type?: string
+          provider_message_id?: string | null
+          raw?: Json | null
+          sender_type: string
+          transcript?: string | null
+        }
+        Update: {
+          audio_url?: string | null
+          body?: string | null
+          confidence?: number | null
+          conversation_id?: string
+          created_at?: string
+          direction?: string
+          id?: string
+          intent?: string | null
+          message_type?: string
+          provider_message_id?: string | null
+          raw?: Json | null
+          sender_type?: string
+          transcript?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gs_whatsapp_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "gs_whatsapp_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       knowledge_items: {
         Row: {
           active: boolean
