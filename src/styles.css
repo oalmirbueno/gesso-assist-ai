@@ -169,4 +169,28 @@
     background-color: var(--color-background);
     color: var(--color-foreground);
   }
+
+  /* Thin modern scrollbars: black track + yellow thumb (GS) */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-primary) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: color-mix(in oklab, var(--color-foreground) 35%, transparent);
+    border-radius: 999px;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: var(--color-primary);
+  }
+  .dark *::-webkit-scrollbar-thumb {
+    background: color-mix(in oklab, var(--color-primary) 70%, transparent);
+  }
 }
+
