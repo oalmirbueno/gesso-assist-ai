@@ -385,6 +385,7 @@ export type Database = {
           contact_id: string
           created_at: string
           current_seller_id: string | null
+          current_seller_key: string | null
           funnel_stage: string | null
           id: string
           intent: string | null
@@ -404,6 +405,7 @@ export type Database = {
           contact_id: string
           created_at?: string
           current_seller_id?: string | null
+          current_seller_key?: string | null
           funnel_stage?: string | null
           id?: string
           intent?: string | null
@@ -423,6 +425,7 @@ export type Database = {
           contact_id?: string
           created_at?: string
           current_seller_id?: string | null
+          current_seller_key?: string | null
           funnel_stage?: string | null
           id?: string
           intent?: string | null
@@ -495,6 +498,7 @@ export type Database = {
           intent: string | null
           message_type: string
           provider_message_id: string | null
+          provider_status: string | null
           raw: Json | null
           sender_type: string
           transcript: string | null
@@ -510,6 +514,7 @@ export type Database = {
           intent?: string | null
           message_type?: string
           provider_message_id?: string | null
+          provider_status?: string | null
           raw?: Json | null
           sender_type: string
           transcript?: string | null
@@ -525,6 +530,7 @@ export type Database = {
           intent?: string | null
           message_type?: string
           provider_message_id?: string | null
+          provider_status?: string | null
           raw?: Json | null
           sender_type?: string
           transcript?: string | null
