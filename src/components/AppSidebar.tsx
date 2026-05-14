@@ -70,23 +70,30 @@ export function AppSidebar() {
     <aside
       className={`hidden md:flex shrink-0 flex-col bg-sidebar text-sidebar-foreground transition-[width] duration-200 ease-out ${width}`}
     >
-      <div className="h-16 flex items-center gap-3 px-3 border-b border-sidebar-border">
-        <div className="h-10 w-10 shrink-0 rounded-xl bg-primary grid place-items-center text-primary-foreground font-black text-lg shadow-md">
-          GS
-        </div>
+      <div
+        className={`h-16 shrink-0 flex items-center border-b border-sidebar-border ${
+          collapsed ? "justify-center px-2" : "gap-3 px-3"
+        }`}
+      >
         {!collapsed && (
-          <div className="flex flex-col leading-tight min-w-0 flex-1">
-            <span className="text-sm font-bold tracking-wide truncate">GS GESSO</span>
-            <span className="text-[10px] text-sidebar-foreground/60 uppercase tracking-wider truncate">
-              Painel WhatsApp · IA
-            </span>
-          </div>
+          <>
+            <div className="h-10 w-10 shrink-0 rounded-xl bg-primary grid place-items-center text-primary-foreground font-black text-lg shadow-md">
+              GS
+            </div>
+            <div className="flex flex-col leading-tight min-w-0 flex-1">
+              <span className="text-sm font-bold tracking-wide truncate">GS GESSO</span>
+              <span className="text-[10px] text-sidebar-foreground/60 uppercase tracking-wider truncate">
+                Painel WhatsApp · IA
+              </span>
+            </div>
+          </>
         )}
         <button
           type="button"
           onClick={toggle}
           aria-label={collapsed ? "Expandir menu" : "Recolher menu"}
-          className="grid h-8 w-8 shrink-0 place-items-center rounded-md text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground transition"
+          title={collapsed ? "Expandir menu" : "Recolher menu"}
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-md text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground transition"
         >
           {collapsed ? (
             <PanelLeftOpen className="h-4 w-4" />

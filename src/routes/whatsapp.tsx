@@ -123,7 +123,7 @@ function WhatsAppCockpit() {
       title="Atendimento Comercial"
       subtitle="WhatsApp oficial GS Gesso · IA atende, você acompanha e intervém"
     >
-      <div className="h-[calc(100vh-4rem)] flex flex-col bg-muted/20">
+      <div className="h-full flex flex-col bg-muted/20 overflow-hidden">
         <Tabs defaultValue="inbox" className="flex-1 flex flex-col min-h-0">
           <div className="border-b bg-card px-6">
             <TabsList className="h-12 bg-transparent gap-1 p-0">
@@ -427,20 +427,34 @@ function ConversationView({ conv, sellers }: { conv: GsConversation; sellers: Gs
 
   const currentSeller = sellers.find((s) => s.id === conv.current_seller_id);
 
+  const initials =
+    (conv.contact?.name ?? conv.contact?.phone ?? "?")
+      .replace(/[^A-Za-zÀ-ÿ0-9 ]/g, "")
+      .trim()
+      .split(/\s+/)
+      .slice(0, 2)
+      .map((s) => s[0]?.toUpperCase())
+      .join("") || "?";
+
   return (
     <>
-      {/* header */}
+      {/* header estilo WhatsApp */}
       <header className="border-b bg-card px-4 py-2.5 flex items-center justify-between gap-3">
-        <div className="min-w-0">
-          <div className="font-semibold text-sm truncate">{conv.contact?.name ?? conv.contact?.phone}</div>
-          <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-            <span>{conv.contact?.phone}</span>
-            {conv.intent && <><span>·</span><span>intenção: <span className="text-foreground">{conv.intent}</span></span></>}
-            {conv.ai_confidence != null && <span>· {Math.round(conv.ai_confidence * 100)}% conf.</span>}
-            {conv.funnel_stage && <><span>·</span><span>{FUNNEL_LABELS[conv.funnel_stage] ?? conv.funnel_stage}</span></>}
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="h-10 w-10 shrink-0 rounded-full bg-primary/20 ring-1 ring-primary/40 grid place-items-center text-sm font-bold text-foreground/80">
+            {initials}
+          </div>
+          <div className="min-w-0">
+            <div className="font-semibold text-sm truncate">{conv.contact?.name ?? conv.contact?.phone}</div>
+            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground truncate">
+              <span>{conv.contact?.phone}</span>
+              {conv.intent && <><span>·</span><span>intenção: <span className="text-foreground">{conv.intent}</span></span></>}
+              {conv.ai_confidence != null && <span>· {Math.round(conv.ai_confidence * 100)}%</span>}
+              {conv.funnel_stage && <><span>·</span><span>{FUNNEL_LABELS[conv.funnel_stage] ?? conv.funnel_stage}</span></>}
+            </div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <Select value={currentSeller?.key ?? ""} onValueChange={changeSeller}>
             <SelectTrigger className="h-8 w-44 text-xs"><SelectValue placeholder="Vendedor / persona" /></SelectTrigger>
             <SelectContent>
@@ -453,10 +467,10 @@ function ConversationView({ conv, sellers }: { conv: GsConversation; sellers: Gs
           </Select>
           {conv.ai_enabled
             ? <Button size="sm" variant="outline" onClick={takeOver} disabled={busy === "take"}>
-                <UserCheck className="h-3.5 w-3.5 mr-1.5" />Assumir conversa
+                <UserCheck className="h-3.5 w-3.5 mr-1.5" />Assumir
               </Button>
             : <Button size="sm" variant="outline" onClick={returnToAi} disabled={busy === "return"}>
-                <Bot className="h-3.5 w-3.5 mr-1.5" />Devolver para IA
+                <Bot className="h-3.5 w-3.5 mr-1.5" />Devolver à IA
               </Button>
           }
           <Button size="sm" variant="ghost" onClick={markResolved}>
@@ -469,7 +483,7 @@ function ConversationView({ conv, sellers }: { conv: GsConversation; sellers: Gs
       </header>
 
       {/* AI status strip */}
-      <div className="px-4 py-1.5 border-b bg-muted/40 text-[11px] text-muted-foreground flex items-center gap-3 flex-wrap">
+      <div className="px-4 py-1.5 border-b bg-muted/40 text-[11px] text-muted-foreground flex items-center gap-3 flex-wrap shrink-0">
         {conv.ai_enabled ? (
           <span className="text-emerald-600 flex items-center gap-1"><Bot className="h-3 w-3" /> IA ligada</span>
         ) : (
@@ -480,39 +494,58 @@ function ConversationView({ conv, sellers }: { conv: GsConversation; sellers: Gs
         {conv.needs_human && <span className="text-amber-600">· ⚠ {conv.needs_human_reason ?? "precisa humano"}</span>}
       </div>
 
-      {/* messages */}
-      <ScrollArea className="flex-1 p-4 bg-muted/20">
-        <div className="space-y-3 max-w-3xl mx-auto">
+      {/* messages, fundo WhatsApp */}
+      <ScrollArea
+        className="flex-1 min-h-0"
+        style={{
+          backgroundColor: "var(--wa-bg)",
+          backgroundImage:
+            "radial-gradient(color-mix(in oklab, var(--color-foreground) 6%, transparent) 1px, transparent 1px)",
+          backgroundSize: "22px 22px",
+        }}
+      >
+        <div className="px-4 py-5 space-y-2 max-w-3xl mx-auto">
           {messages.length === 0 && (
-            <div className="text-center text-xs text-muted-foreground py-8">Sem mensagens nesta conversa ainda.</div>
+            <div className="text-center text-xs text-muted-foreground py-10">
+              Sem mensagens nesta conversa ainda.
+            </div>
           )}
-          {messages.map((m) => {
+          {messages.map((m, i) => {
             const inbound = m.direction === "inbound";
             const ps = (m as any).provider_status as string | undefined;
+            const prev = messages[i - 1];
+            const grouped = prev && prev.direction === m.direction;
+            const tail = inbound
+              ? grouped ? "rounded-2xl" : "rounded-2xl rounded-tl-sm"
+              : grouped ? "rounded-2xl" : "rounded-2xl rounded-tr-sm";
             return (
-              <div key={m.id} className={`flex ${inbound ? "justify-start" : "justify-end"}`}>
-                <div className={`max-w-[75%] rounded-lg px-3 py-2 text-sm shadow-sm ${
-                  inbound ? "bg-card border" : "bg-emerald-600 text-white"
-                }`}>
-                  {!inbound && (
-                    <div className="text-[10px] uppercase tracking-wide opacity-80 mb-0.5">
-                      {m.sender_type === "ai" ? "IA" : "Humano"}
+              <div key={m.id} className={`flex ${inbound ? "justify-start" : "justify-end"} ${grouped ? "mt-0.5" : "mt-2"}`}>
+                <div
+                  className={`max-w-[72%] px-3 py-2 text-sm shadow-sm ${tail}`}
+                  style={{
+                    backgroundColor: inbound ? "var(--wa-bubble-in)" : "var(--wa-bubble-out)",
+                    color: "var(--color-foreground)",
+                  }}
+                >
+                  {!inbound && !grouped && (
+                    <div className="text-[10px] uppercase tracking-wide font-semibold text-foreground/50 mb-0.5">
+                      {m.sender_type === "ai" ? "IA · GS" : "Atendente"}
                     </div>
                   )}
                   {m.audio_url && <audio controls src={m.audio_url} className="mb-1 max-w-full h-8" />}
                   {m.transcript && (
-                    <div className={`text-[11px] italic mb-1 ${inbound ? "text-muted-foreground" : "text-white/80"}`}>
+                    <div className="text-[11px] italic mb-1 text-foreground/60">
                       🎙 {m.transcript}
                     </div>
                   )}
-                  {m.body && <div className="whitespace-pre-wrap">{m.body}</div>}
-                  <div className={`text-[10px] mt-1 flex items-center gap-1.5 ${inbound ? "text-muted-foreground" : "text-white/70"}`}>
-                    <span>{fmtTime(m.created_at)}</span>
-                    {m.intent && <span>· {m.intent}</span>}
+                  {m.body && <div className="whitespace-pre-wrap leading-snug">{m.body}</div>}
+                  <div className="text-[10px] mt-1 flex items-center gap-1.5 justify-end text-foreground/50">
+                    {m.intent && <span>{m.intent}</span>}
                     {m.confidence != null && <span>({Math.round(m.confidence * 100)}%)</span>}
-                    {!inbound && ps === "pending" && <span>· aguardando envio</span>}
-                    {!inbound && ps === "sent" && <span>· enviado</span>}
-                    {!inbound && ps === "failed" && <span className="text-red-200">· falhou, tentar novamente</span>}
+                    <span>{fmtTime(m.created_at)}</span>
+                    {!inbound && ps === "pending" && <span title="Aguardando envio">🕓</span>}
+                    {!inbound && ps === "sent" && <span className="text-sky-600" title="Enviado">✓✓</span>}
+                    {!inbound && ps === "failed" && <span className="text-red-500" title="Falhou">⚠</span>}
                   </div>
                 </div>
               </div>
@@ -523,7 +556,7 @@ function ConversationView({ conv, sellers }: { conv: GsConversation; sellers: Gs
 
       {/* eventos recentes (auditoria) */}
       {showAudit && (
-        <div className="border-t bg-card/70 px-4 py-2 max-h-44 overflow-auto">
+        <div className="border-t bg-card/70 px-4 py-2 max-h-44 overflow-auto shrink-0">
           <div className="flex items-center justify-between mb-1">
             <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
               <Activity className="h-3 w-3" />Eventos recentes
@@ -552,7 +585,7 @@ function ConversationView({ conv, sellers }: { conv: GsConversation; sellers: Gs
 
       {/* draft IA */}
       {aiDraft && (
-        <div className="border-t bg-sky-500/5 p-3">
+        <div className="border-t bg-sky-500/5 p-3 shrink-0">
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-[11px] font-medium text-sky-600 flex items-center gap-1.5">
               <Sparkles className="h-3 w-3" />Rascunho da IA
@@ -583,24 +616,32 @@ function ConversationView({ conv, sellers }: { conv: GsConversation; sellers: Gs
         </div>
       )}
 
-      {/* composer */}
-      <div className="border-t p-3 bg-card">
+      {/* composer estilo WhatsApp */}
+      <div className="border-t p-3 bg-card shrink-0">
         <div className="flex gap-2 items-end">
-          <Textarea value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={onComposerKey}
-            placeholder="Escreva sua resposta para o cliente… (Enter envia, Shift+Enter quebra linha)"
-            className="min-h-[60px] resize-none text-sm" />
-          <div className="flex flex-col gap-2">
-            <Button size="sm" variant="outline" onClick={requestDraft} disabled={busy === "draft"}>
-              <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-              {busy === "draft" ? "Gerando…" : "Rascunho IA"}
-            </Button>
-            <Button size="sm" onClick={sendHuman} disabled={!draft.trim() || busy === "send"}>
-              <Send className="h-3.5 w-3.5 mr-1.5" />
-              {busy === "send" ? "Enviando…" : "Enviar resposta"}
-            </Button>
+          <div className="flex-1 rounded-2xl border bg-background focus-within:border-primary/60 transition-colors">
+            <Textarea
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={onComposerKey}
+              placeholder="Escreva sua resposta… (Enter envia, Shift+Enter quebra linha)"
+              className="min-h-[44px] max-h-32 resize-none text-sm border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 px-3.5 py-2.5"
+            />
           </div>
+          <Button size="sm" variant="outline" onClick={requestDraft} disabled={busy === "draft"} className="h-10">
+            <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+            {busy === "draft" ? "Gerando…" : "IA"}
+          </Button>
+          <Button
+            size="sm"
+            onClick={sendHuman}
+            disabled={!draft.trim() || busy === "send"}
+            className="h-10 rounded-full px-4"
+          >
+            <Send className="h-4 w-4" />
+          </Button>
         </div>
-        <p className="text-[10px] text-muted-foreground mt-1.5">
+        <p className="text-[10px] text-muted-foreground mt-1.5 px-1">
           Ao enviar, a IA pausa automaticamente nesta conversa. Devolva para a IA quando terminar.
         </p>
       </div>
