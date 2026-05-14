@@ -1,126 +1,227 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/integrations/supabase/client";
 import {
   MessageSquarePlus,
   UserCheck,
   Headphones,
   CheckCircle2,
   Flame,
-  Clock,
-  HelpCircle,
-  Mic,
-  AlertTriangle,
+  Bot,
+  ArrowRight,
+  Zap,
 } from "lucide-react";
-import { Link } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/")({
   component: Dashboard,
 });
 
-const cards = [
-  { label: "Conversas novas", value: 8, icon: MessageSquarePlus, tone: "info" },
-  { label: "Aguardando humano", value: 3, icon: UserCheck, tone: "warning" },
-  { label: "Em atendimento", value: 5, icon: Headphones, tone: "primary" },
-  { label: "Resolvidas hoje", value: 14, icon: CheckCircle2, tone: "success" },
-  { label: "Leads quentes", value: 6, icon: Flame, tone: "destructive" },
-  { label: "Tempo médio s/ resposta", value: "4m32s", icon: Clock, tone: "muted" },
-  { label: "IA pediu ajuda", value: 2, icon: HelpCircle, tone: "warning" },
-];
+type Stats = {
+  novas: number;
+  precisaHumano: number;
+  emAtendimento: number;
+  resolvidasHoje: number;
+  leadsQuentes: number;
+  iaAtiva: number;
+};
 
-const alerts = [
-  { type: "IA pediu humano", text: "Marcos Almeida — lead quente, pedido de fechamento", time: "10:42", tone: "warning" as const },
-  { type: "Áudio aguardando", text: "Larissa Souto enviou áudio — transcrição pendente", time: "10:55", tone: "info" as const },
-  { type: "Sem resposta", text: "Construtora Ferraz aguardando há 12 min", time: "10:50", tone: "destructive" as const },
-  { type: "Reclamação", text: "Cliente João reportou atraso na entrega", time: "09:20", tone: "destructive" as const },
-];
+type RecentEvent = {
+  id: string;
+  event_type: string;
+  created_at: string;
+  payload: Record<string, unknown> | null;
+};
 
-function toneClass(tone: string) {
-  switch (tone) {
-    case "info": return "bg-info/10 text-info";
-    case "warning": return "bg-warning/15 text-warning-foreground";
-    case "success": return "bg-success/10 text-success";
-    case "destructive": return "bg-destructive/10 text-destructive";
-    case "primary": return "bg-primary/10 text-primary";
-    default: return "bg-muted text-muted-foreground";
-  }
-}
+const empty: Stats = {
+  novas: 0,
+  precisaHumano: 0,
+  emAtendimento: 0,
+  resolvidasHoje: 0,
+  leadsQuentes: 0,
+  iaAtiva: 0,
+};
 
 function Dashboard() {
+  const [stats, setStats] = useState<Stats>(empty);
+  const [events, setEvents] = useState<RecentEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  async function load() {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const [convs, evts] = await Promise.all([
+      supabase
+        .from("gs_whatsapp_conversations")
+        .select("status,ai_enabled,needs_human,intent,updated_at"),
+      supabase
+        .from("gs_whatsapp_events")
+        .select("id,event_type,created_at,payload")
+        .order("created_at", { ascending: false })
+        .limit(8),
+    ]);
+
+    const list = convs.data ?? [];
+    setStats({
+      novas: list.filter((c) => c.status === "nova").length,
+      precisaHumano: list.filter((c) => c.needs_human).length,
+      emAtendimento: list.filter((c) => c.status === "em_atendimento").length,
+      resolvidasHoje: list.filter(
+        (c) => c.status === "resolvida" && new Date(c.updated_at) >= todayStart,
+      ).length,
+      leadsQuentes: list.filter((c) => c.intent === "compra_quente" || c.needs_human)
+        .length,
+      iaAtiva: list.filter((c) => c.ai_enabled).length,
+    });
+    setEvents((evts.data as RecentEvent[]) ?? []);
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    load();
+    const ch = supabase
+      .channel("dash-realtime")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "gs_whatsapp_conversations" },
+        () => load(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "gs_whatsapp_events" },
+        () => load(),
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, []);
+
+  const cards = [
+    { label: "Conversas novas", value: stats.novas, icon: MessageSquarePlus, tone: "info" },
+    { label: "Aguardando humano", value: stats.precisaHumano, icon: UserCheck, tone: "warning" },
+    { label: "Em atendimento", value: stats.emAtendimento, icon: Headphones, tone: "primary" },
+    { label: "Resolvidas hoje", value: stats.resolvidasHoje, icon: CheckCircle2, tone: "success" },
+    { label: "Leads quentes", value: stats.leadsQuentes, icon: Flame, tone: "destructive" },
+    { label: "IA ativa", value: stats.iaAtiva, icon: Bot, tone: "primary" },
+  ];
+
   return (
-    <AppShell title="Dashboard">
-      <div className="p-6 space-y-6">
-        <Card className="p-4 border-primary/30 bg-primary/5 space-y-2">
-          <p className="text-sm">
-            <span className="font-semibold text-primary">Como funciona o atendimento.</span>{" "}
-            <span className="text-muted-foreground">
-              Quando um cliente chama a GS Gesso no WhatsApp, o n8n recebe a mensagem,
-              consulta histórico e base de conhecimento, chama a OpenAI e responde
-              automaticamente como um vendedor humano treinado. Este painel serve para{" "}
-              <strong>acompanhar, corrigir, assumir conversas e ensinar a IA</strong> —
-              ele não fala com o WhatsApp nem com a OpenAI diretamente.
-            </span>
-          </p>
-          <ol className="text-xs text-muted-foreground list-decimal pl-5 space-y-0.5">
-            <li>Cliente envia mensagem no WhatsApp oficial.</li>
-            <li>WhatsApp Cloud API → webhook do n8n.</li>
-            <li>n8n monta contexto (histórico, contato, funil, base, objeções).</li>
-            <li>n8n chama OpenAI com o agente da GS Gesso e decide a resposta.</li>
-            <li>Se for seguro, n8n responde no WhatsApp; senão pede humano aqui.</li>
-            <li>Painel mostra tudo em tempo real e permite assumir/devolver.</li>
-          </ol>
+    <AppShell
+      title="Visão Geral"
+      subtitle="Operação WhatsApp · GS Gesso · em tempo real"
+      actions={
+        <Button asChild className="font-semibold">
+          <Link to="/whatsapp">
+            <Zap className="h-4 w-4 mr-1.5" /> Abrir cockpit
+          </Link>
+        </Button>
+      }
+    >
+      <div className="p-8 space-y-6 max-w-[1500px] mx-auto">
+        {/* Hero brand strip */}
+        <Card className="p-6 bg-foreground text-background border-foreground overflow-hidden relative">
+          <div className="absolute right-0 top-0 h-full w-64 bg-primary/90 [clip-path:polygon(40%_0,100%_0,100%_100%,0_100%)]" />
+          <div className="relative z-10 max-w-2xl">
+            <p className="text-xs font-bold tracking-widest text-primary uppercase">
+              GS Gesso · Atendimento IA
+            </p>
+            <h2 className="text-2xl font-bold mt-2 leading-tight">
+              Sua IA atende como um vendedor humano. Você só intervém quando precisar.
+            </h2>
+            <p className="text-sm text-background/70 mt-2">
+              O painel acompanha cada conversa em tempo real — assuma, devolva para a
+              IA, treine respostas e mantenha o pipeline organizado.
+            </p>
+          </div>
         </Card>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+
+        {/* KPIs */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           {cards.map((c) => {
             const Icon = c.icon;
             return (
-              <Card key={c.label} className="p-4">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-xs text-muted-foreground">{c.label}</p>
-                    <p className="text-2xl font-semibold mt-1">{c.value}</p>
-                  </div>
-                  <div className={`h-9 w-9 rounded-lg grid place-items-center ${toneClass(c.tone)}`}>
-                    <Icon className="h-5 w-5" />
-                  </div>
+              <Card key={c.label} className="p-5 hover:shadow-md transition">
+                <div className={`h-10 w-10 rounded-xl grid place-items-center mb-3 ${toneClass(c.tone)}`}>
+                  <Icon className="h-5 w-5" />
                 </div>
+                <p className="text-3xl font-bold tracking-tight">
+                  {loading ? "—" : c.value}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">{c.label}</p>
               </Card>
             );
           })}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <Card className="p-5 lg:col-span-2">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+          <Card className="p-6 lg:col-span-2">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold">Alertas em tempo real</h2>
-              <Link to="/inbox" className="text-xs text-primary hover:underline">Abrir conversas →</Link>
+              <div>
+                <h3 className="font-bold">Eventos recentes</h3>
+                <p className="text-xs text-muted-foreground">
+                  Auditoria em tempo real do que IA, humano e n8n estão fazendo.
+                </p>
+              </div>
+              <Link
+                to="/whatsapp"
+                className="text-xs font-semibold text-foreground hover:text-primary inline-flex items-center gap-1"
+              >
+                Ver cockpit <ArrowRight className="h-3 w-3" />
+              </Link>
             </div>
-            <div className="space-y-2">
-              {alerts.map((a, i) => (
-                <div key={i} className="flex items-center gap-3 p-3 rounded-md border bg-card">
-                  <div className={`h-8 w-8 rounded-md grid place-items-center ${toneClass(a.tone)}`}>
-                    <AlertTriangle className="h-4 w-4" />
+            {events.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-12 text-center">
+                Nenhum evento ainda. Eventos chegam quando o n8n disparar para o painel.
+              </p>
+            ) : (
+              <div className="space-y-1.5">
+                {events.map((e) => (
+                  <div
+                    key={e.id}
+                    className="flex items-center gap-3 p-3 rounded-lg border bg-card hover:border-primary/40 transition"
+                  >
+                    <Badge variant="secondary" className="font-mono text-[10px]">
+                      {e.event_type}
+                    </Badge>
+                    <p className="text-xs text-muted-foreground flex-1 truncate">
+                      {previewPayload(e.payload)}
+                    </p>
+                    <span className="text-[11px] text-muted-foreground tabular-nums">
+                      {new Date(e.created_at).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{a.type}</p>
-                    <p className="text-xs text-muted-foreground truncate">{a.text}</p>
-                  </div>
-                  <span className="text-xs text-muted-foreground">{a.time}</span>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </Card>
 
-          <Card className="p-5">
-            <h2 className="font-semibold mb-4">Saúde da IA</h2>
-            <div className="space-y-3 text-sm">
-              <Row label="Conversas com IA ativa" value="12" />
-              <Row label="Confiança média" value="86%" />
-              <Row label="Handoffs hoje" value="4" />
-              <Row label="Aprendizados pendentes" value={<Badge variant="secondary">2</Badge>} />
-              <Row label="Áudios transcritos" value="9 / 11" />
-            </div>
+          <Card className="p-6">
+            <h3 className="font-bold mb-4">Como funciona</h3>
+            <ol className="text-xs text-muted-foreground space-y-2.5 list-none">
+              {[
+                "Cliente chama no WhatsApp oficial da GS",
+                "n8n recebe via Cloud API e monta contexto",
+                "IA responde como vendedor treinado",
+                "Painel mostra tudo em tempo real",
+                "Humano assume quando o lead esquentar",
+                "Aprovou um aprendizado? IA já usa amanhã",
+              ].map((t, i) => (
+                <li key={i} className="flex gap-3">
+                  <span className="h-5 w-5 shrink-0 rounded-full bg-primary text-primary-foreground text-[10px] font-bold grid place-items-center">
+                    {i + 1}
+                  </span>
+                  <span className="leading-relaxed">{t}</span>
+                </li>
+              ))}
+            </ol>
           </Card>
         </div>
       </div>
@@ -128,11 +229,26 @@ function Dashboard() {
   );
 }
 
-function Row({ label, value }: { label: string; value: React.ReactNode }) {
-  return (
-    <div className="flex items-center justify-between">
-      <span className="text-muted-foreground">{label}</span>
-      <span className="font-medium">{value}</span>
-    </div>
-  );
+function toneClass(tone: string) {
+  switch (tone) {
+    case "info":
+      return "bg-info/10 text-info";
+    case "warning":
+      return "bg-warning/15 text-warning-foreground";
+    case "success":
+      return "bg-success/10 text-success";
+    case "destructive":
+      return "bg-destructive/10 text-destructive";
+    case "primary":
+      return "bg-primary/15 text-foreground";
+    default:
+      return "bg-muted text-muted-foreground";
+  }
+}
+
+function previewPayload(p: Record<string, unknown> | null) {
+  if (!p) return "—";
+  const candidate = p.reason ?? p.message ?? p.body ?? p.seller_key ?? p.intent;
+  if (typeof candidate === "string") return candidate;
+  return JSON.stringify(p).slice(0, 120);
 }
