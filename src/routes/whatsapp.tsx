@@ -11,20 +11,72 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   MessageSquare, UserCheck, Bot, Mic, FileText, Users, Search, Send,
   Sparkles, CheckCircle2, AlertTriangle, Calendar, BookOpen, Headphones,
+  Activity, X,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   useGsConversations, useGsMessages, useGsTable,
   type GsConversation, type GsSeller, type GsSlot, type GsFact,
 } from "@/hooks/useGsRealtime";
-import { gsService, commandToast, type GsCommandResult } from "@/services/gsGessoWhatsAppService";
+import { gsService, type GsCommandResult } from "@/services/gsGessoWhatsAppService";
 
-function runToast(r: GsCommandResult) {
-  const t = commandToast(r);
-  if (t.type === "success") toast.success(t.msg);
-  else if (t.type === "info") toast.info(t.msg);
-  else toast.error(t.msg);
+/** Toast curado por comando — fala da equipe GS, não jargão técnico. */
+function commandFeedback(
+  r: GsCommandResult,
+  copy: { success: string; pending?: string; error: string },
+) {
+  if (!r.ok) return toast.error(copy.error);
+  if (r.pending_connector)
+    return toast.info(copy.pending ?? "Comando salvo no painel. Conector n8n ainda pendente.");
+  return toast.success(copy.success);
+}
+
+interface GsEventRow {
+  id: string;
+  conversation_id: string | null;
+  event_type: string;
+  payload: any;
+  created_at: string;
+}
+
+function useGsEvents(conversationId: string | null, limit = 8) {
+  const [events, setEvents] = useState<GsEventRow[]>([]);
+  useEffect(() => {
+    if (!conversationId) {
+      setEvents([]);
+      return;
+    }
+    let alive = true;
+    (async () => {
+      const { data } = await supabase
+        .from("gs_whatsapp_events" as any)
+        .select("*")
+        .eq("conversation_id", conversationId)
+        .order("created_at", { ascending: false })
+        .limit(limit);
+      if (alive) setEvents((data ?? []) as any);
+    })();
+    const ch = supabase
+      .channel(`gs-events-${conversationId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "gs_whatsapp_events",
+          filter: `conversation_id=eq.${conversationId}`,
+        },
+        (p) => setEvents((prev) => [p.new as any, ...prev].slice(0, limit)),
+      )
+      .subscribe();
+    return () => {
+      alive = false;
+      supabase.removeChannel(ch);
+    };
+  }, [conversationId, limit]);
+  return events;
 }
 
 export const Route = createFileRoute("/whatsapp")({
