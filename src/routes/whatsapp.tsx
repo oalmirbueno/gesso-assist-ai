@@ -119,15 +119,38 @@ function fmtTime(iso?: string | null) {
 
 function WhatsAppCockpit() {
   return (
-    <AppShell title="Atendimento WhatsApp">
-      <div className="h-[calc(100vh-3.5rem)] flex flex-col">
+    <AppShell
+      title="Atendimento Comercial"
+      subtitle="WhatsApp oficial GS Gesso · IA atende, você acompanha e intervém"
+    >
+      <div className="h-[calc(100vh-4rem)] flex flex-col bg-muted/20">
         <Tabs defaultValue="inbox" className="flex-1 flex flex-col min-h-0">
-          <div className="border-b bg-card px-4">
-            <TabsList className="h-12 bg-transparent gap-1">
-              <TabsTrigger value="inbox" className="gap-2"><MessageSquare className="h-4 w-4" />Inbox</TabsTrigger>
-              <TabsTrigger value="vendedores" className="gap-2"><Users className="h-4 w-4" />Vendedores</TabsTrigger>
-              <TabsTrigger value="agenda" className="gap-2"><Calendar className="h-4 w-4" />Agenda da equipe</TabsTrigger>
-              <TabsTrigger value="base" className="gap-2"><BookOpen className="h-4 w-4" />Base comercial</TabsTrigger>
+          <div className="border-b bg-card px-6">
+            <TabsList className="h-12 bg-transparent gap-1 p-0">
+              <TabsTrigger
+                value="inbox"
+                className="gap-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-12 px-4 font-semibold"
+              >
+                <MessageSquare className="h-4 w-4" />Conversas
+              </TabsTrigger>
+              <TabsTrigger
+                value="vendedores"
+                className="gap-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-12 px-4 font-semibold"
+              >
+                <Users className="h-4 w-4" />Vendedores
+              </TabsTrigger>
+              <TabsTrigger
+                value="agenda"
+                className="gap-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-12 px-4 font-semibold"
+              >
+                <Calendar className="h-4 w-4" />Agenda
+              </TabsTrigger>
+              <TabsTrigger
+                value="base"
+                className="gap-2 data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:text-foreground data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none h-12 px-4 font-semibold"
+              >
+                <BookOpen className="h-4 w-4" />Base comercial
+              </TabsTrigger>
             </TabsList>
           </div>
           <TabsContent value="inbox" className="flex-1 min-h-0 m-0"><InboxView /></TabsContent>
@@ -143,21 +166,23 @@ function WhatsAppCockpit() {
 /* ============== STATS CARDS ============== */
 function StatCard({ icon: Icon, label, value, tone = "default" }: any) {
   const tones: Record<string, string> = {
-    default: "text-foreground",
-    warn: "text-amber-500",
-    ok: "text-emerald-500",
-    info: "text-sky-500",
+    default: "bg-muted text-foreground",
+    warn: "bg-warning/15 text-warning-foreground",
+    ok: "bg-primary/20 text-foreground",
+    info: "bg-info/15 text-info",
   };
   return (
-    <div className="rounded-lg border bg-card p-3 flex items-center gap-3">
-      <div className={`h-9 w-9 rounded-md bg-muted grid place-items-center ${tones[tone]}`}>
-        <Icon className="h-4 w-4" />
+    <div className="rounded-xl border bg-card p-3.5 flex items-center gap-3 hover:shadow-sm transition">
+      <div className={`h-10 w-10 rounded-lg grid place-items-center ${tones[tone]}`}>
+        <Icon className="h-4.5 w-4.5" />
       </div>
-      <div className="leading-tight">
-        <div className="text-[11px] text-muted-foreground uppercase tracking-wide">{label}</div>
-        <div className="text-lg font-semibold">{value}</div>
+      <div className="leading-tight min-w-0">
+        <div className="text-[10px] text-muted-foreground uppercase tracking-widest font-semibold truncate">{label}</div>
+        <div className="text-xl font-bold tabular-nums">{value}</div>
       </div>
     </div>
+  );
+}
   );
 }
 
