@@ -17,6 +17,7 @@ import { useAuthSession } from "@/hooks/useAuthSession";
 
 const items = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/whatsapp", label: "Atendimento WhatsApp", icon: MessageSquare },
   { to: "/inbox", label: "Conversas", icon: MessagesSquare },
   { to: "/crm", label: "CRM / Contatos", icon: Users },
   { to: "/conhecimento", label: "Conhecimento da IA", icon: BookOpen },
