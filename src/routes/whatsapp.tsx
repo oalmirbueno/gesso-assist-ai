@@ -328,11 +328,11 @@ function ConversationView({ conv, sellers }: { conv: GsConversation; sellers: Gs
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Select value={conv.current_seller_id ?? ""} onValueChange={changeSeller}>
+          <Select value={currentSeller?.key ?? ""} onValueChange={changeSeller}>
             <SelectTrigger className="h-8 w-44 text-xs"><SelectValue placeholder="Vendedor / persona" /></SelectTrigger>
             <SelectContent>
               {sellers.map((s) => (
-                <SelectItem key={s.id} value={s.id} className="text-xs">
+                <SelectItem key={s.id} value={s.key} className="text-xs">
                   {s.name} {!s.active && "(inativo)"}
                 </SelectItem>
               ))}
