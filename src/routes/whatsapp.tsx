@@ -123,7 +123,7 @@ function WhatsAppCockpit() {
       title="Atendimento Comercial"
       subtitle="WhatsApp oficial GS Gesso · IA atende, você acompanha e intervém"
     >
-      <div className="h-[calc(100vh-4rem)] flex flex-col bg-muted/20">
+      <div className="h-full flex flex-col bg-muted/20 overflow-hidden">
         <Tabs defaultValue="inbox" className="flex-1 flex flex-col min-h-0">
           <div className="border-b bg-card px-6">
             <TabsList className="h-12 bg-transparent gap-1 p-0">
