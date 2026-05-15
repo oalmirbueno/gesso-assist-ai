@@ -239,7 +239,7 @@ export async function handleN8nInboundPayloadAdmin(
           (payload.meta as any)?.remote_jid ??
           payload.contact?.phone,
       });
-      return { success: true, contact_id: null as any, conversation_id: null as any };
+      return { success: true, contact_id: null as any, conversation_id: null as any, message_id: null as any };
     }
   }
   if (payload.event_type === "evolution_history_backfill" && !payload.message.provider_message_id) {
