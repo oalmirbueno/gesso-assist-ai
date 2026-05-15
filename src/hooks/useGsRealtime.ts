@@ -184,6 +184,43 @@ export function useGsMessages(conversationId: string | null) {
   return messages;
 }
 
+export function useGsMessageSearchIndex() {
+  const [index, setIndex] = useState<Record<string, string>>({});
+
+  const reload = useCallback(async () => {
+    const { data, error } = await supabase
+      .from("gs_whatsapp_messages" as any)
+      .select("conversation_id, body, transcript")
+      .order("created_at", { ascending: false })
+      .limit(1000);
+    if (error) {
+      console.error("load gs message search index failed:", error);
+      return;
+    }
+    const next: Record<string, string> = {};
+    for (const row of (data ?? []) as any[]) {
+      const key = row.conversation_id;
+      if (!key) continue;
+      next[key] = [next[key], row.body, row.transcript].filter(Boolean).join(" ");
+    }
+    setIndex(next);
+  }, []);
+
+  useEffect(() => {
+    reload();
+    const ch = supabase
+      .channel(`gs-message-search-${Date.now()}-${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "gs_whatsapp_messages" }, reload)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "gs_whatsapp_messages" }, reload)
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, [reload]);
+
+  return index;
+}
+
 export function useGsDiagnostics() {
   const [counts, setCounts] = useState({ conversations: 0, messages: 0, lidConversations: 0, backfillEvents: 0 });
 
