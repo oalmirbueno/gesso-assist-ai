@@ -21,6 +21,7 @@ import {
   type GsConversation, type GsSeller, type GsSlot, type GsFact,
 } from "@/hooks/useGsRealtime";
 import { gsService, type GsCommandResult } from "@/services/gsGessoWhatsAppService";
+import { GsRealtimeStatus } from "@/components/GsRealtimeStatus";
 
 /** Toast curado por comando, fala da equipe GS, não jargão técnico. */
 function commandFeedback(
@@ -220,9 +221,14 @@ function InboxView() {
   }, [conversations, filter, search]);
 
   const selected = conversations.find((c) => c.id === selectedId) ?? null;
+  const selectedMessages = useGsMessages(selectedId);
 
   return (
     <div className="h-full flex flex-col">
+      <GsRealtimeStatus
+        conversationCount={conversations.length}
+        messageCount={selectedMessages.length}
+      />
       {/* stats */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 p-4 border-b bg-card/50">
         <StatCard icon={MessageSquare} label="Conversas ativas" value={stats.ativas} tone="info" />
