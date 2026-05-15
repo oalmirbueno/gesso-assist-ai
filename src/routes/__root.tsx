@@ -4,10 +4,14 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useLocation,
+  useNavigate,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 import appCss from "../styles.css?url";
 
@@ -111,6 +115,32 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const router = useRouter();
+  const [authChecked, setAuthChecked] = useState(false);
+  const [isAuthed, setIsAuthed] = useState(false);
+
+  useEffect(() => {
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      setIsAuthed(!!session);
+      setAuthChecked(true);
+      router.invalidate();
+      queryClient.invalidateQueries();
+    });
+    supabase.auth.getSession().then(({ data }) => {
+      setIsAuthed(!!data.session);
+      setAuthChecked(true);
+    });
+    return () => sub.subscription.unsubscribe();
+  }, [router, queryClient]);
+
+  useEffect(() => {
+    if (!authChecked) return;
+    const isLogin = location.pathname === "/login";
+    if (!isAuthed && !isLogin) navigate({ to: "/login" });
+    if (isAuthed && isLogin) navigate({ to: "/" });
+  }, [authChecked, isAuthed, location.pathname, navigate]);
 
   return (
     <QueryClientProvider client={queryClient}>
