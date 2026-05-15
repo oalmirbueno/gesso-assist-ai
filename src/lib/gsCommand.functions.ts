@@ -192,11 +192,11 @@ export const gsPanelCommand = createServerFn({ method: "POST" })
       case "send_human_message": {
         const { data: conv } = await supabaseAdmin
           .from("gs_whatsapp_conversations")
-          .select("id, contact_id, gs_whatsapp_contacts(phone, name)")
+          .select("id, contact_id, remote_jid, provider_instance, contact:gs_whatsapp_contacts(phone, name, display_name)")
           .eq("id", data.conversation_id)
           .maybeSingle();
         if (!conv) return { ok: false, command: data.command, error: "conversation not found" };
-        const contact: any = (conv as any).gs_whatsapp_contacts;
+        const contact: any = (conv as any).contact;
 
         const { data: inserted, error: insErr } = await supabaseAdmin
           .from("gs_whatsapp_messages")
@@ -230,6 +230,9 @@ export const gsPanelCommand = createServerFn({ method: "POST" })
           message_id: inserted.id,
           contact_phone: contact?.phone ?? null,
           contact_name: contact?.name ?? null,
+          contact_display_name: contact?.display_name ?? contact?.name ?? null,
+          remote_jid: (conv as any).remote_jid ?? null,
+          provider_instance: (conv as any).provider_instance ?? null,
           body: data.body,
           user_id: userId,
         });
