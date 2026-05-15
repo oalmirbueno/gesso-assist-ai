@@ -349,42 +349,56 @@ export async function handleN8nInboundPayloadAdmin(
   }
 
   // 3) Message (idempotent on provider_message_id when present)
-  const messageRow: any = {
-    conversation_id: conversation.id,
-    contact_id: contact.id,
-    direction: payload.message.direction,
-    sender_type: payload.message.sender_type,
-    body: payload.message.body ?? null,
-    message_type: payload.message.message_type ?? "text",
-    audio_url: payload.message.audio_url ?? null,
-    transcript: payload.message.transcript ?? null,
-    provider_message_id: payload.message.provider_message_id ?? null,
-    raw: { ...((payload.message.raw as any) ?? {}), remote_jid: remoteJid, lid_jid: lidJid },
-    created_at: messageCreatedAt,
-    intent: aiFields.intent,
-    confidence: aiFields.ai_confidence,
-    needs_human: payload.conversation?.needs_human ?? null,
-    ai_reply: aiFields.ai_draft_reply,
-  };
+  const parts = normalizeMessageParts(payload.message) ?? [{ body: payload.message.body }];
+  const insertedMessageIds: string[] = [];
+  for (let index = 0; index < parts.length; index += 1) {
+    const part = parts[index] as any;
+    const messageRow: any = {
+      conversation_id: conversation.id,
+      contact_id: contact.id,
+      direction: part.direction ?? payload.message.direction,
+      sender_type: part.sender_type ?? payload.message.sender_type,
+      body: part.body ?? part.text ?? payload.message.body ?? null,
+      message_type: part.message_type ?? payload.message.message_type ?? "text",
+      audio_url: part.audio_url ?? payload.message.audio_url ?? null,
+      transcript: part.transcript ?? payload.message.transcript ?? null,
+      provider_message_id:
+        part.provider_message_id ??
+        withUniquePartProviderId(payload.message.provider_message_id, index, parts.length),
+      raw: {
+        ...((payload.message.raw as any) ?? {}),
+        ...((part.raw as any) ?? {}),
+        remote_jid: remoteJid,
+        lid_jid: lidJid,
+        part_index: parts.length > 1 ? index + 1 : undefined,
+        part_count: parts.length > 1 ? parts.length : undefined,
+      },
+      created_at: part.created_at ?? messageCreatedAt,
+      intent: part.intent ?? aiFields.intent,
+      confidence: part.confidence ?? aiFields.ai_confidence,
+      needs_human: payload.conversation?.needs_human ?? null,
+      ai_reply: part.ai_reply ?? aiFields.ai_draft_reply,
+    };
 
-  let messageId: string;
-  if (payload.message.provider_message_id) {
-    const { data, error } = await supabaseAdmin
-      .from("gs_whatsapp_messages")
-      .upsert(messageRow, { onConflict: "provider_message_id" })
-      .select("id")
-      .single();
-    if (error) throw error;
-    messageId = data.id;
-  } else {
-    const { data, error } = await supabaseAdmin
-      .from("gs_whatsapp_messages")
-      .insert(messageRow)
-      .select("id")
-      .single();
-    if (error) throw error;
-    messageId = data.id;
+    if (messageRow.provider_message_id) {
+      const { data, error } = await supabaseAdmin
+        .from("gs_whatsapp_messages")
+        .upsert(messageRow, { onConflict: "provider_message_id" })
+        .select("id")
+        .single();
+      if (error) throw error;
+      insertedMessageIds.push(data.id);
+    } else {
+      const { data, error } = await supabaseAdmin
+        .from("gs_whatsapp_messages")
+        .insert(messageRow)
+        .select("id")
+        .single();
+      if (error) throw error;
+      insertedMessageIds.push(data.id);
+    }
   }
+  const messageId = insertedMessageIds[0];
 
   // 4) Events
   const events: Array<{ event_type: string; payload: any }> = [
