@@ -248,7 +248,27 @@ function InboxView() {
   }, [conversations, filter, messageSearchIndex, search]);
 
   const selected = conversations.find((c) => c.id === selectedId) ?? null;
-  const selectedMessages = useGsMessages(selectedId);
+  const selectedMessagesRaw = useGsMessages(selectedId);
+  const selectedMessages = useMemo(
+    () =>
+      selectedMessagesRaw.filter((m) => {
+        if (m.sender_type === "system") return true;
+        const audioUrl =
+          m.audio_url ||
+          (m.media as any)?.url ||
+          (m.media as any)?.audio_url ||
+          (m.raw as any)?.message?.audioMessage?.url ||
+          null;
+        return Boolean(
+          (m.body ?? "").toString().trim() ||
+            (m.transcript ?? "").toString().trim() ||
+            audioUrl ||
+            (m.media as any)?.url ||
+            m.message_type === "audio",
+        );
+      }),
+    [selectedMessagesRaw],
+  );
   
 
   useEffect(() => {
