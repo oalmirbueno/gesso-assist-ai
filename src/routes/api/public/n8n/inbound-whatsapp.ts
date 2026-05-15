@@ -1,5 +1,4 @@
 import { createFileRoute } from "@tanstack/react-router";
-import type { N8nInboundPayload } from "@/types/domain";
 
 export const Route = createFileRoute("/api/public/n8n/inbound-whatsapp")({
   server: {
@@ -10,32 +9,31 @@ export const Route = createFileRoute("/api/public/n8n/inbound-whatsapp")({
         try {
           const expected = process.env.N8N_PANEL_SECRET;
           const provided = request.headers.get("x-n8n-secret");
-          const isDev = process.env.NODE_ENV !== "production";
 
-          if (expected) {
-            if (!provided || provided !== expected) {
-              return json(
-                { success: false, error: "invalid x-n8n-secret" },
-                401,
-              );
-            }
-          } else if (!isDev) {
-            return json(
-              { success: false, error: "N8N_PANEL_SECRET not configured" },
-              500,
-            );
+          if (!expected || !provided || provided !== expected) {
+            return json({ success: false, error: "unauthorized" }, 401);
           }
 
-          const payload = (await request.json()) as N8nInboundPayload;
+          const payload = await request.json().catch(() => null);
+          if (!payload || (Array.isArray(payload) && payload.length === 0)) {
+            return json({ success: false, error: "empty_message" }, 400);
+          }
+
           const { expandInboundPayloadBatch, handleN8nInboundPayloadAdmin } = await import(
             "@/services/inboundServerService.server"
           );
           const batch = expandInboundPayloadBatch(payload);
+          if (batch.length === 0) return json({ success: false, error: "empty_message" }, 400);
+
           const results = [];
           for (const item of batch) results.push(await handleN8nInboundPayloadAdmin(item));
-          return json(batch.length === 1 ? results[0] : { success: true, ok: results.length, results });
+          const first = results[0];
+          return json({ ...first, received: results.length, results });
         } catch (err: any) {
           console.error("public n8n inbound error:", err);
+          if (err?.message === "empty_message") {
+            return json({ success: false, error: "empty_message" }, 400);
+          }
           return json(
             { success: false, error: err?.message ?? "unknown error" },
             500,
