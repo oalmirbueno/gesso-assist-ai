@@ -17,7 +17,8 @@ import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import {
-  useGsConversations, useGsDiagnostics, useGsMessages, useGsTable,
+  getGsConversationDisplayName, jidLocalId, useGsConversations, useGsDiagnostics,
+  useGsMessageSearchIndex, useGsMessages, useGsTable,
   type GsConversation, type GsMessage, type GsSeller, type GsSlot, type GsFact,
 } from "@/hooks/useGsRealtime";
 import { gsService, type GsCommandResult } from "@/services/gsGessoWhatsAppService";
@@ -116,6 +117,10 @@ function fmtTime(iso?: string | null) {
   if (d.toDateString() === today.toDateString())
     return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
   return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+}
+
+function includesSearch(value: unknown, search: string) {
+  return String(value ?? "").toLowerCase().includes(search);
 }
 
 function WhatsAppCockpit() {
