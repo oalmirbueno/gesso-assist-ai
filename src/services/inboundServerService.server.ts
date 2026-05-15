@@ -291,8 +291,12 @@ export async function handleN8nInboundPayloadAdmin(
     if (error) throw error;
     contact = data;
   } else {
-    const patch = {
-      phone,
+    const existingAliases: string[] = Array.isArray(contact.raw?.phone_aliases) ? contact.raw.phone_aliases : [];
+    const aliasSet = new Set(existingAliases);
+    if (matchedByPhoneFallback && phone && phone !== contact.phone) aliasSet.add(phone);
+    const patch: any = {
+      // Em phone fallback NÃO sobrescreve phone (jids @lid vs @s.whatsapp.net geram phones diferentes do mesmo cliente)
+      phone: matchedByPhoneFallback ? contact.phone : (phone || contact.phone),
       name: payload.contact.name ?? contact.name ?? displayName,
       display_name: displayName ?? contact.display_name,
       source: payload.contact.source ?? contact.source,
@@ -304,7 +308,7 @@ export async function handleN8nInboundPayloadAdmin(
       notes: contactContext.notes ?? contact.notes,
       next_action: contactContext.next_action ?? contact.next_action,
       last_message_at: messageCreatedAt,
-      raw: { ...(contact.raw ?? {}), ...contactRaw } as any,
+      raw: { ...(contact.raw ?? {}), ...contactRaw, phone_aliases: Array.from(aliasSet) } as any,
     };
     const { data, error } = await supabaseAdmin
       .from("gs_whatsapp_contacts")
