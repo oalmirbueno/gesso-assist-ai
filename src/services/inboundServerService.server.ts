@@ -239,7 +239,7 @@ export async function handleN8nInboundPayloadAdmin(
           (payload.meta as any)?.remote_jid ??
           payload.contact?.phone,
       });
-      return { success: true, contact_id: null as any, conversation_id: null as any, message_id: null as any };
+      throw new Error("empty_message");
     }
   }
   if (payload.event_type === "evolution_history_backfill" && !payload.message.provider_message_id) {
@@ -539,7 +539,7 @@ export async function handleN8nInboundPayloadAdmin(
   }
 
   // 3) Message (idempotent on provider_message_id when present)
-  const parts = normalizeMessageParts(payload.message) ?? [{ body: payload.message.body }];
+  const parts = normalizeMessageParts(payload.message) ?? [payload.message];
   const insertedMessageIds: string[] = [];
   for (let index = 0; index < parts.length; index += 1) {
     const part = parts[index] as any;
@@ -654,6 +654,7 @@ export async function handleN8nInboundPayloadAdmin(
     }
   }
   const messageId = insertedMessageIds[0];
+  if (!messageId) throw new Error("empty_message");
 
   // 4) Events
   const events: Array<{ event_type: string; payload: any }> = [
