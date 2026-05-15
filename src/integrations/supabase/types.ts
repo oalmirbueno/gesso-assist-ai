@@ -217,8 +217,13 @@ export type Database = {
           created_at: string
           ends_at: string
           id: string
+          label: string | null
           notes: string | null
+          raw: Json
           seller_id: string | null
+          seller_key: string | null
+          slot_end: string | null
+          slot_start: string | null
           source: string
           starts_at: string
           status: string
@@ -228,8 +233,13 @@ export type Database = {
           created_at?: string
           ends_at: string
           id?: string
+          label?: string | null
           notes?: string | null
+          raw?: Json
           seller_id?: string | null
+          seller_key?: string | null
+          slot_end?: string | null
+          slot_start?: string | null
           source?: string
           starts_at: string
           status?: string
@@ -239,8 +249,13 @@ export type Database = {
           created_at?: string
           ends_at?: string
           id?: string
+          label?: string | null
           notes?: string | null
+          raw?: Json
           seller_id?: string | null
+          seller_key?: string | null
+          slot_end?: string | null
+          slot_start?: string | null
           source?: string
           starts_at?: string
           status?: string
@@ -259,33 +274,54 @@ export type Database = {
       gs_commercial_facts: {
         Row: {
           active: boolean
+          approved_by: string | null
           created_at: string
           fact_type: string
           id: string
           key: string
+          kind: string | null
           metadata: Json
+          source: string | null
+          title: string | null
           updated_at: string
+          valid_from: string | null
+          valid_until: string | null
           value: string
+          value_json: Json
         }
         Insert: {
           active?: boolean
+          approved_by?: string | null
           created_at?: string
           fact_type: string
           id?: string
           key: string
+          kind?: string | null
           metadata?: Json
+          source?: string | null
+          title?: string | null
           updated_at?: string
+          valid_from?: string | null
+          valid_until?: string | null
           value: string
+          value_json?: Json
         }
         Update: {
           active?: boolean
+          approved_by?: string | null
           created_at?: string
           fact_type?: string
           id?: string
           key?: string
+          kind?: string | null
           metadata?: Json
+          source?: string | null
+          title?: string | null
           updated_at?: string
+          valid_from?: string | null
+          valid_until?: string | null
           value?: string
+          value_json?: Json
         }
         Relationships: []
       }
@@ -300,6 +336,8 @@ export type Database = {
           role: string
           schedule: Json
           updated_at: string
+          whatsapp_phone: string | null
+          working_hours: Json
         }
         Insert: {
           active?: boolean
@@ -311,6 +349,8 @@ export type Database = {
           role?: string
           schedule?: Json
           updated_at?: string
+          whatsapp_phone?: string | null
+          working_hours?: Json
         }
         Update: {
           active?: boolean
@@ -322,6 +362,8 @@ export type Database = {
           role?: string
           schedule?: Json
           updated_at?: string
+          whatsapp_phone?: string | null
+          working_hours?: Json
         }
         Relationships: []
       }
@@ -329,14 +371,18 @@ export type Database = {
         Row: {
           city: string | null
           created_at: string
+          display_name: string | null
           id: string
           interest: string | null
+          last_message_at: string | null
           name: string | null
           neighborhood: string | null
           next_action: string | null
           notes: string | null
           phone: string
+          raw: Json
           responsible_seller_id: string | null
+          responsible_user_id: string | null
           source: string | null
           stage: string
           tags: Json
@@ -345,14 +391,18 @@ export type Database = {
         Insert: {
           city?: string | null
           created_at?: string
+          display_name?: string | null
           id?: string
           interest?: string | null
+          last_message_at?: string | null
           name?: string | null
           neighborhood?: string | null
           next_action?: string | null
           notes?: string | null
           phone: string
+          raw?: Json
           responsible_seller_id?: string | null
+          responsible_user_id?: string | null
           source?: string | null
           stage?: string
           tags?: Json
@@ -361,14 +411,18 @@ export type Database = {
         Update: {
           city?: string | null
           created_at?: string
+          display_name?: string | null
           id?: string
           interest?: string | null
+          last_message_at?: string | null
           name?: string | null
           neighborhood?: string | null
           next_action?: string | null
           notes?: string | null
           phone?: string
+          raw?: Json
           responsible_seller_id?: string | null
+          responsible_user_id?: string | null
           source?: string | null
           stage?: string
           tags?: Json
@@ -382,6 +436,7 @@ export type Database = {
           ai_draft_reply: string | null
           ai_enabled: boolean
           ai_last_decision: Json | null
+          assigned_user_id: string | null
           contact_id: string
           created_at: string
           current_seller_id: string | null
@@ -390,10 +445,18 @@ export type Database = {
           id: string
           intent: string | null
           last_ai_action: string | null
+          last_inbound_at: string | null
           last_message_at: string | null
+          last_outbound_at: string | null
           needs_human: boolean
           needs_human_reason: string | null
+          persona_key: string | null
+          provider: string | null
+          provider_instance: string | null
+          raw: Json
+          remote_jid: string | null
           status: string
+          summary: string | null
           unread_count: number
           updated_at: string
         }
@@ -402,6 +465,7 @@ export type Database = {
           ai_draft_reply?: string | null
           ai_enabled?: boolean
           ai_last_decision?: Json | null
+          assigned_user_id?: string | null
           contact_id: string
           created_at?: string
           current_seller_id?: string | null
@@ -410,10 +474,18 @@ export type Database = {
           id?: string
           intent?: string | null
           last_ai_action?: string | null
+          last_inbound_at?: string | null
           last_message_at?: string | null
+          last_outbound_at?: string | null
           needs_human?: boolean
           needs_human_reason?: string | null
+          persona_key?: string | null
+          provider?: string | null
+          provider_instance?: string | null
+          raw?: Json
+          remote_jid?: string | null
           status?: string
+          summary?: string | null
           unread_count?: number
           updated_at?: string
         }
@@ -422,6 +494,7 @@ export type Database = {
           ai_draft_reply?: string | null
           ai_enabled?: boolean
           ai_last_decision?: Json | null
+          assigned_user_id?: string | null
           contact_id?: string
           created_at?: string
           current_seller_id?: string | null
@@ -430,10 +503,18 @@ export type Database = {
           id?: string
           intent?: string | null
           last_ai_action?: string | null
+          last_inbound_at?: string | null
           last_message_at?: string | null
+          last_outbound_at?: string | null
           needs_human?: boolean
           needs_human_reason?: string | null
+          persona_key?: string | null
+          provider?: string | null
+          provider_instance?: string | null
+          raw?: Json
+          remote_jid?: string | null
           status?: string
+          summary?: string | null
           unread_count?: number
           updated_at?: string
         }
@@ -456,6 +537,7 @@ export type Database = {
       }
       gs_whatsapp_events: {
         Row: {
+          contact_id: string | null
           conversation_id: string | null
           created_at: string
           event_type: string
@@ -463,6 +545,7 @@ export type Database = {
           payload: Json | null
         }
         Insert: {
+          contact_id?: string | null
           conversation_id?: string | null
           created_at?: string
           event_type: string
@@ -470,6 +553,7 @@ export type Database = {
           payload?: Json | null
         }
         Update: {
+          contact_id?: string | null
           conversation_id?: string | null
           created_at?: string
           event_type?: string
@@ -488,50 +572,68 @@ export type Database = {
       }
       gs_whatsapp_messages: {
         Row: {
+          ai_reply: string | null
           audio_url: string | null
           body: string | null
           confidence: number | null
+          contact_id: string | null
           conversation_id: string
           created_at: string
           direction: string
           id: string
           intent: string | null
+          media: Json
           message_type: string
+          needs_human: boolean | null
+          persona_key: string | null
           provider_message_id: string | null
           provider_status: string | null
           raw: Json | null
+          seller_key: string | null
           sender_type: string
           transcript: string | null
         }
         Insert: {
+          ai_reply?: string | null
           audio_url?: string | null
           body?: string | null
           confidence?: number | null
+          contact_id?: string | null
           conversation_id: string
           created_at?: string
           direction: string
           id?: string
           intent?: string | null
+          media?: Json
           message_type?: string
+          needs_human?: boolean | null
+          persona_key?: string | null
           provider_message_id?: string | null
           provider_status?: string | null
           raw?: Json | null
+          seller_key?: string | null
           sender_type: string
           transcript?: string | null
         }
         Update: {
+          ai_reply?: string | null
           audio_url?: string | null
           body?: string | null
           confidence?: number | null
+          contact_id?: string | null
           conversation_id?: string
           created_at?: string
           direction?: string
           id?: string
           intent?: string | null
+          media?: Json
           message_type?: string
+          needs_human?: boolean | null
+          persona_key?: string | null
           provider_message_id?: string | null
           provider_status?: string | null
           raw?: Json | null
+          seller_key?: string | null
           sender_type?: string
           transcript?: string | null
         }
