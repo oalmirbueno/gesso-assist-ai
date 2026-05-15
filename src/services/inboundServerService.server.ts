@@ -8,53 +8,127 @@ import type { InboundResult, N8nInboundPayload } from "@/types/domain";
 export async function handleN8nInboundPayloadAdmin(
   payload: N8nInboundPayload,
 ): Promise<InboundResult> {
-  if (!payload?.contact?.phone) throw new Error("contact.phone required");
+  if (!payload?.contact) throw new Error("contact required");
   if (!payload?.message?.direction || !payload?.message?.sender_type) {
     throw new Error("message.direction and message.sender_type required");
   }
+  if (payload.event_type === "evolution_history_backfill" && !payload.message.provider_message_id) {
+    throw new Error("message.provider_message_id required for evolution_history_backfill");
+  }
 
   const nowIso = new Date().toISOString();
+  const messageCreatedAt = payload.message.created_at ?? nowIso;
   const provider = (payload.meta as any)?.provider ?? "evolution";
   const providerInstance =
     (payload.meta as any)?.provider_instance ??
     (payload.meta as any)?.instance ??
     "gs-gesso";
   const remoteJid =
+    payload.conversation?.remote_jid ??
+    payload.conversation?.external_id ??
     (payload.meta as any)?.remote_jid ??
-    `${payload.contact.phone}@s.whatsapp.net`;
+    (payload.meta as any)?.jid ??
+    (payload.message.raw as any)?.remote_jid ??
+    (payload.message.raw as any)?.key?.remoteJid ??
+    (payload.contact.phone ? `${payload.contact.phone}@s.whatsapp.net` : null);
+  if (!remoteJid) throw new Error("conversation.remote_jid or contact.phone required");
+  const digits = (value: string | null | undefined) => (value ?? "").replace(/\D/g, "");
+  const fallbackPhone = digits(remoteJid);
+  const phone = digits(payload.contact.phone) || fallbackPhone;
+  if (!phone) throw new Error("phone or digits(remote_jid) required");
+  const lidJid = remoteJid.endsWith("@lid")
+    ? remoteJid
+    : ((payload.meta as any)?.lid_jid ?? (payload.contact as any).lid ?? (payload.message.raw as any)?.lid_jid ?? null);
+  const displayName =
+    payload.contact.display_name ??
+    payload.contact.pushName ??
+    payload.contact.push_name ??
+    payload.contact.name ??
+    (payload.meta as any)?.pushName ??
+    (payload.meta as any)?.push_name ??
+    null;
+  const contactRaw = {
+    ...(payload.contact as any),
+    remote_jid: remoteJid,
+    lid_jid: lidJid,
+    pushName: displayName,
+  };
 
-  // 1) Contact (upsert on phone)
-  const { data: contact, error: contactError } = await supabaseAdmin
-    .from("gs_whatsapp_contacts")
-    .upsert(
-      {
-        phone: payload.contact.phone,
-        name: payload.contact.name ?? null,
-        display_name: payload.contact.name ?? null,
-        source: payload.contact.source ?? "whatsapp_evolution",
-        stage: payload.contact.stage ?? "novo",
-        tags: (payload.contact.tags as any) ?? [],
-        city: payload.contact.city ?? null,
-        neighborhood: payload.contact.neighborhood ?? null,
-        last_message_at: nowIso,
-        raw: payload.contact as any,
-      },
-      { onConflict: "phone" },
-    )
-    .select("*")
-    .single();
-  if (contactError) throw contactError;
-
-  // 2) Conversation: open one if exists, else create
-  const { data: existing, error: lookupErr } = await supabaseAdmin
+  // 1) Conversation lookup by operational key before deciding which contact to update.
+  const { data: byJid, error: byJidErr } = await supabaseAdmin
     .from("gs_whatsapp_conversations")
     .select("*")
-    .eq("contact_id", contact.id)
-    .neq("status", "resolvida")
-    .order("created_at", { ascending: false })
-    .limit(1)
+    .eq("provider_instance", providerInstance)
+    .eq("remote_jid", remoteJid)
     .maybeSingle();
-  if (lookupErr) throw lookupErr;
+  if (byJidErr) throw byJidErr;
+
+  let contact: any = null;
+  if (byJid?.contact_id) {
+    const { data: existingContact, error } = await supabaseAdmin
+      .from("gs_whatsapp_contacts")
+      .select("*")
+      .eq("id", byJid.contact_id)
+      .maybeSingle();
+    if (error) throw error;
+    contact = existingContact;
+  }
+
+  if (!contact) {
+    const { data, error } = await supabaseAdmin
+      .from("gs_whatsapp_contacts")
+      .upsert(
+        {
+          phone,
+          name: payload.contact.name ?? displayName,
+          display_name: displayName,
+          source: payload.contact.source ?? "whatsapp_evolution",
+          stage: payload.contact.stage ?? "novo",
+          tags: (payload.contact.tags as any) ?? [],
+          city: payload.contact.city ?? null,
+          neighborhood: payload.contact.neighborhood ?? null,
+          last_message_at: messageCreatedAt,
+          raw: contactRaw as any,
+        },
+        { onConflict: "phone" },
+      )
+      .select("*")
+      .single();
+    if (error) throw error;
+    contact = data;
+  } else {
+    const patch = {
+      phone,
+      name: payload.contact.name ?? contact.name ?? displayName,
+      display_name: displayName ?? contact.display_name,
+      source: payload.contact.source ?? contact.source,
+      stage: payload.contact.stage ?? contact.stage,
+      tags: (payload.contact.tags as any) ?? contact.tags,
+      city: payload.contact.city ?? contact.city,
+      neighborhood: payload.contact.neighborhood ?? contact.neighborhood,
+      last_message_at: messageCreatedAt,
+      raw: { ...(contact.raw ?? {}), ...contactRaw } as any,
+    };
+    const { data, error } = await supabaseAdmin
+      .from("gs_whatsapp_contacts")
+      .update(patch)
+      .eq("id", contact.id)
+      .select("*")
+      .single();
+    if (error?.code === "23505") {
+      const { data: phoneContact, error: phoneErr } = await supabaseAdmin
+        .from("gs_whatsapp_contacts")
+        .select("*")
+        .eq("phone", phone)
+        .maybeSingle();
+      if (phoneErr) throw phoneErr;
+      if (phoneContact) contact = phoneContact;
+    } else if (error) throw error;
+    else contact = data;
+  }
+
+  // 2) Conversation: operational identity is provider_instance + remote_jid.
+  const existing = byJid;
 
   const aiFields = {
     intent: payload.ai?.intent ?? null,
