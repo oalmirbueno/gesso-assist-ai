@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { isProductionWhatsappConversation } from "@/lib/whatsappProduction";
 
 export interface GsContact {
   id: string;
@@ -14,6 +15,7 @@ export interface GsContact {
   next_action: string | null;
   notes: string | null;
   tags: any;
+  raw?: any;
 }
 
 export interface GsConversation {
@@ -91,7 +93,8 @@ export function useGsConversations() {
       .order("last_message_at", { ascending: false, nullsFirst: false })
       .limit(200);
     if (error) console.error("load gs conversations failed:", error);
-    setData((rows ?? []) as any);
+    const productionRows = ((rows ?? []) as any[]).filter(isProductionWhatsappConversation);
+    setData(productionRows as any);
     setLoading(false);
   }, []);
 
