@@ -375,6 +375,35 @@ function NoConversationSelected() {
   );
 }
 
+/* ============== MESSAGE DIAGNOSTICS ============== */
+function MessageDiagnostics({ messages }: { messages: GsMessage[] }) {
+  const counts = useMemo(() => {
+    const c = { total: messages.length, inbound: 0, outbound: 0, audio: 0, ai: 0, client: 0, human: 0, system: 0 };
+    for (const m of messages) {
+      if (m.direction === "inbound") c.inbound += 1; else c.outbound += 1;
+      if (m.message_type === "audio" || m.audio_url) c.audio += 1;
+      if (m.sender_type === "ai") c.ai += 1;
+      else if (m.sender_type === "client") c.client += 1;
+      else if (m.sender_type === "human") c.human += 1;
+      else if (m.sender_type === "system") c.system += 1;
+    }
+    return c;
+  }, [messages]);
+  if (counts.total === 0) return null;
+  return (
+    <div className="border-t bg-muted/30 px-4 py-1.5 text-[10px] text-muted-foreground flex flex-wrap gap-x-3 gap-y-0.5 font-mono shrink-0">
+      <span>msgs: <b className="text-foreground">{counts.total}</b></span>
+      <span>in: {counts.inbound}</span>
+      <span>out: {counts.outbound}</span>
+      <span>áudio: {counts.audio}</span>
+      <span>ai: {counts.ai}</span>
+      <span>client: {counts.client}</span>
+      <span>human: {counts.human}</span>
+      {counts.system > 0 && <span>system: {counts.system}</span>}
+    </div>
+  );
+}
+
 /* ============== CONVERSATION VIEW ============== */
 function ConversationView({
   conv,
