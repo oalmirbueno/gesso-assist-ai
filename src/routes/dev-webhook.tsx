@@ -196,12 +196,12 @@ function DevWebhook() {
         </Card>
 
         {result && (
-          <Card className="p-4 space-y-2">
-            <div className="flex items-center gap-2">
+          <Card className="p-6 space-y-4">
+            <div className="flex items-center gap-3 flex-wrap">
               {result.success ? (
-                <CheckCircle2 className="h-4 w-4 text-success" />
+                <CheckCircle2 className="h-5 w-5 text-success" />
               ) : (
-                <ShieldAlert className="h-4 w-4 text-destructive" />
+                <ShieldAlert className="h-5 w-5 text-destructive" />
               )}
               <Badge
                 className={
@@ -216,13 +216,12 @@ function DevWebhook() {
                 {result.success ? "Payload processado com sucesso" : result.error}
               </span>
             </div>
-            <pre className="text-xs bg-muted p-3 rounded overflow-auto">
+            <pre className="text-xs bg-muted p-4 rounded-md overflow-auto max-h-[480px] leading-relaxed">
               {JSON.stringify(result, null, 2)}
             </pre>
             {result.success && (
               <p className="text-xs text-muted-foreground">
-                Verifique a Inbox, a conversa deve aparecer no topo com o
-                rascunho da IA e o status “precisa humano”.
+                Verifique a Inbox — a conversa deve aparecer no topo com o rascunho da IA e o status “precisa humano”.
               </p>
             )}
           </Card>
