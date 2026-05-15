@@ -376,21 +376,46 @@ export async function handleN8nInboundPayloadAdmin(
   const insertedMessageIds: string[] = [];
   for (let index = 0; index < parts.length; index += 1) {
     const part = parts[index] as any;
+    const partRaw = { ...((payload.message.raw as any) ?? {}), ...((part.raw as any) ?? {}) };
+    const audioMsg = partRaw?.message?.audioMessage ?? partRaw?.audioMessage;
+    const mediaCandidate =
+      part.media ??
+      (payload.message as any).media ??
+      partRaw?.media ??
+      (audioMsg ? { type: "audio", ...audioMsg } : null);
+    const audioUrl =
+      part.audio_url ??
+      payload.message.audio_url ??
+      mediaCandidate?.url ??
+      mediaCandidate?.audio_url ??
+      audioMsg?.url ??
+      partRaw?.audio_url ??
+      null;
+    const messageType =
+      part.message_type ??
+      payload.message.message_type ??
+      (audioMsg || audioUrl ? "audio" : "text");
+    const providerStatus =
+      part.provider_status ??
+      (payload.message as any).provider_status ??
+      partRaw?.status ??
+      null;
     const messageRow: any = {
       conversation_id: conversation.id,
       contact_id: contact.id,
       direction: part.direction ?? payload.message.direction,
       sender_type: part.sender_type ?? payload.message.sender_type,
       body: part.body ?? part.text ?? payload.message.body ?? null,
-      message_type: part.message_type ?? payload.message.message_type ?? "text",
-      audio_url: part.audio_url ?? payload.message.audio_url ?? null,
+      message_type: messageType,
+      audio_url: audioUrl,
       transcript: part.transcript ?? payload.message.transcript ?? null,
+      media: mediaCandidate ?? {},
+      provider_status: providerStatus,
       provider_message_id:
         part.provider_message_id ??
         withUniquePartProviderId(payload.message.provider_message_id, index, parts.length),
       raw: {
-        ...((payload.message.raw as any) ?? {}),
-        ...((part.raw as any) ?? {}),
+        ...partRaw,
         remote_jid: remoteJid,
         lid_jid: lidJid,
         part_index: parts.length > 1 ? index + 1 : undefined,
