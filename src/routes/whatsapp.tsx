@@ -17,8 +17,8 @@ import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import {
-  useGsConversations, useGsMessages, useGsTable,
-  type GsConversation, type GsSeller, type GsSlot, type GsFact,
+  useGsConversations, useGsDiagnostics, useGsMessages, useGsTable,
+  type GsConversation, type GsMessage, type GsSeller, type GsSlot, type GsFact,
 } from "@/hooks/useGsRealtime";
 import { gsService, type GsCommandResult } from "@/services/gsGessoWhatsAppService";
 import { GsRealtimeStatus } from "@/components/GsRealtimeStatus";
@@ -222,11 +222,15 @@ function InboxView() {
 
   const selected = conversations.find((c) => c.id === selectedId) ?? null;
   const selectedMessages = useGsMessages(selectedId);
+  const diagnostics = useGsDiagnostics(selectedId);
 
   return (
     <div className="h-full flex flex-col">
       <GsRealtimeStatus
-        conversationCount={conversations.length}
+        conversationCount={diagnostics.conversations || conversations.length}
+        totalMessageCount={diagnostics.messages}
+        selectedConversationId={selectedId}
+        selectedRemoteJid={selected?.remote_jid ?? null}
         messageCount={selectedMessages.length}
       />
       {/* stats */}
@@ -277,12 +281,12 @@ function InboxView() {
                       }`}>
                       <div className="flex items-center justify-between gap-2">
                         <div className="font-medium text-sm truncate">
-                          {c.contact?.name ?? c.contact?.phone ?? "Sem nome"}
+                          {c.contact?.display_name ?? c.contact?.name ?? c.contact?.phone ?? c.remote_jid ?? "Sem nome"}
                         </div>
                         <span className="text-[10px] text-muted-foreground shrink-0">{fmtTime(c.last_message_at)}</span>
                       </div>
                       <div className="text-[11px] text-muted-foreground truncate">
-                        {c.contact?.phone}{c.contact?.neighborhood ? ` · ${c.contact.neighborhood}` : ""}
+                        {c.contact?.phone}{c.remote_jid ? ` · ${c.remote_jid}` : ""}{c.contact?.neighborhood ? ` · ${c.contact.neighborhood}` : ""}
                       </div>
                       <div className="flex flex-wrap gap-1 mt-1.5">
                         <Badge variant="outline" className="text-[9px] py-0 h-4">
@@ -303,7 +307,7 @@ function InboxView() {
 
         {/* chat */}
         <section className="col-span-12 md:col-span-5 lg:col-span-6 flex flex-col min-h-0 border-r">
-          {selected ? <ConversationView conv={selected} sellers={sellers} /> : <NoConversationSelected />}
+          {selected ? <ConversationView conv={selected} sellers={sellers} messages={selectedMessages} /> : <NoConversationSelected />}
         </section>
 
         {/* CRM */}
