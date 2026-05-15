@@ -63,16 +63,18 @@ export function jidLocalId(remoteJid?: string | null) {
   return String(remoteJid ?? "").split("@")[0] || null;
 }
 
-export function getGsConversationDisplayName(conversation: Pick<GsConversation, "remote_jid" | "contact">): string {
+export function getGsConversationDisplayName(
+  conversation: Pick<GsConversation, "remote_jid" | "contact">,
+): string {
   const contact = conversation.contact;
   return String(
     contact?.display_name ||
-    contact?.raw?.pushName ||
-    contact?.raw?.push_name ||
-    contact?.name ||
-    jidLocalId(conversation.remote_jid) ||
-    contact?.phone ||
-    "Sem nome"
+      contact?.raw?.pushName ||
+      contact?.raw?.push_name ||
+      contact?.name ||
+      jidLocalId(conversation.remote_jid) ||
+      contact?.phone ||
+      "Sem nome",
   );
 }
 
@@ -124,9 +126,13 @@ export function useGsConversations() {
     load();
     const ch = supabase
       .channel(`gs-inbox-${Date.now()}-${Math.random().toString(36).slice(2)}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "gs_whatsapp_conversations" }, load)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "gs_whatsapp_conversations" },
+        load,
+      )
       .on("postgres_changes", { event: "*", schema: "public", table: "gs_whatsapp_contacts" }, load)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "gs_whatsapp_messages" }, load)
+      .on("postgres_changes", { event: "*", schema: "public", table: "gs_whatsapp_messages" }, load)
       .subscribe();
     return () => {
       supabase.removeChannel(ch);
@@ -160,19 +166,21 @@ export function useGsMessages(conversationId: string | null) {
       .on(
         "postgres_changes",
         {
-          event: "INSERT",
+          event: "*",
           schema: "public",
           table: "gs_whatsapp_messages",
           filter: `conversation_id=eq.${conversationId}`,
         },
         (p) =>
           setMessages((current) => {
+            if (p.eventType === "DELETE") {
+              return current.filter((m) => m.id !== (p.old as any).id);
+            }
             const next = current.some((m) => m.id === (p.new as any).id)
               ? current.map((m) => (m.id === (p.new as any).id ? (p.new as any) : m))
               : [...current, p.new as any];
             return next.sort(
-              (a, b) =>
-                new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+              (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
             );
           }),
       )
@@ -212,8 +220,16 @@ export function useGsMessageSearchIndex() {
     reload();
     const ch = supabase
       .channel(`gs-message-search-${Date.now()}-${Math.random().toString(36).slice(2)}`)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "gs_whatsapp_messages" }, reload)
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "gs_whatsapp_messages" }, reload)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "gs_whatsapp_messages" },
+        reload,
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "gs_whatsapp_messages" },
+        reload,
+      )
       .subscribe();
     return () => {
       supabase.removeChannel(ch);
@@ -224,16 +240,19 @@ export function useGsMessageSearchIndex() {
 }
 
 export function useGsDiagnostics() {
-  const [counts, setCounts] = useState({ conversations: 0, messages: 0, lidConversations: 0, backfillEvents: 0 });
+  const [counts, setCounts] = useState({
+    conversations: 0,
+    messages: 0,
+    lidConversations: 0,
+    backfillEvents: 0,
+  });
 
   const reload = useCallback(async () => {
     const [conversationResult, messageResult, eventResult] = await Promise.all([
       supabase
         .from("gs_whatsapp_conversations" as any)
         .select("id, remote_jid, contact:gs_whatsapp_contacts(name, display_name, phone, raw)"),
-      supabase
-        .from("gs_whatsapp_messages" as any)
-        .select("id, provider_message_id, body"),
+      supabase.from("gs_whatsapp_messages" as any).select("id, provider_message_id, body"),
       supabase
         .from("gs_whatsapp_events" as any)
         .select("id, event_type")
@@ -244,7 +263,8 @@ export function useGsDiagnostics() {
     setCounts({
       conversations: conversations.length,
       messages: messages.length,
-      lidConversations: conversations.filter((c) => String(c.remote_jid ?? "").includes("@lid")).length,
+      lidConversations: conversations.filter((c) => String(c.remote_jid ?? "").includes("@lid"))
+        .length,
       backfillEvents: (eventResult.data ?? []).length,
     });
   }, []);
@@ -253,8 +273,16 @@ export function useGsDiagnostics() {
     reload();
     const ch = supabase
       .channel(`gs-diagnostics-${Date.now()}-${Math.random().toString(36).slice(2)}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "gs_whatsapp_conversations" }, reload)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "gs_whatsapp_messages" }, reload)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "gs_whatsapp_conversations" },
+        reload,
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "gs_whatsapp_messages" },
+        reload,
+      )
       .subscribe();
     return () => {
       supabase.removeChannel(ch);
