@@ -21,6 +21,7 @@ import {
   type GsConversation, type GsSeller, type GsSlot, type GsFact,
 } from "@/hooks/useGsRealtime";
 import { gsService, type GsCommandResult } from "@/services/gsGessoWhatsAppService";
+import { GsRealtimeStatus } from "@/components/GsRealtimeStatus";
 
 /** Toast curado por comando, fala da equipe GS, não jargão técnico. */
 function commandFeedback(
