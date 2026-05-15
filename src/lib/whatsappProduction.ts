@@ -59,8 +59,17 @@ export function isProductionWhatsappConversation(conversation: {
 
 export function isProductionWhatsappEvent(event: {
   payload?: Record<string, unknown> | null;
+  conversation?: {
+    remote_jid?: string | null;
+    contact?: {
+      name?: string | null;
+      display_name?: string | null;
+      phone?: string | null;
+    } | null;
+  } | null;
 }) {
   const payload = event.payload ?? {};
+  if (event.conversation && !isProductionWhatsappConversation(event.conversation)) return false;
   return !isKnownWhatsappTestRecord({
     remote_jid: String(payload.remote_jid ?? ""),
     provider_message_id: String(payload.provider_message_id ?? ""),
