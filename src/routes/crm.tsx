@@ -75,7 +75,7 @@ function CRM() {
     const s = q.trim().toLowerCase();
     if (!s) return rows;
     return rows.filter((r) =>
-      [r.name, r.phone, r.city, r.neighborhood, r.interest]
+      [r.display_name, r.name, r.phone, r.city, r.neighborhood, r.interest]
         .filter(Boolean)
         .some((v) => String(v).toLowerCase().includes(s)),
     );
@@ -174,7 +174,7 @@ function CRM() {
                       >
                         <div className="flex items-start justify-between gap-2">
                           <p className="font-semibold text-sm truncate">
-                            {c.name ?? "Sem nome"}
+                            {c.display_name ?? c.name ?? "Sem nome"}
                           </p>
                         </div>
                         <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
@@ -226,9 +226,8 @@ function EmptyState() {
         </div>
         <h2 className="font-bold text-lg">Nenhum contato sincronizado ainda</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          O CRM começa a popular automaticamente quando o n8n enviar eventos
-          para <code className="bg-muted px-1 rounded text-xs">receive-gs-gesso-event</code>{" "}
-          a partir do WhatsApp oficial da GS Gesso.
+          O CRM começa a popular automaticamente quando o n8n enviar eventos reais
+          do WhatsApp oficial da GS Gesso para o painel.
         </p>
       </div>
     </div>
