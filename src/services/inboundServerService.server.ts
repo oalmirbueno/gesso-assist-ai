@@ -479,6 +479,21 @@ export async function handleN8nInboundPayloadAdmin(
       ai_reply: part.ai_reply ?? aiFields.ai_draft_reply,
     };
 
+    // Defensive guard: skip empty payloads (no body, no transcript, no audio, no media).
+    // Prevents incomplete backfills from polluting the inbox with "sem texto" rows.
+    const hasContent =
+      Boolean(String(messageRow.body ?? "").trim()) ||
+      Boolean(String(messageRow.transcript ?? "").trim()) ||
+      Boolean(messageRow.audio_url) ||
+      Boolean((messageRow.media as any)?.url);
+    if (!hasContent) {
+      console.warn("[inbound] skipped empty message payload", {
+        provider_message_id: messageRow.provider_message_id,
+        remote_jid: remoteJid,
+      });
+      continue;
+    }
+
     if (messageRow.provider_message_id) {
       const { data, error } = await supabaseAdmin
         .from("gs_whatsapp_messages")
