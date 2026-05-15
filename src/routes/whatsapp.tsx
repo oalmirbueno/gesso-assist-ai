@@ -224,6 +224,16 @@ function InboxView() {
   const selectedMessages = useGsMessages(selectedId);
   const diagnostics = useGsDiagnostics();
 
+  useEffect(() => {
+    if (filtered.length === 0) {
+      if (selectedId) setSelectedId(null);
+      return;
+    }
+    if (!selectedId || !filtered.some((c) => c.id === selectedId)) {
+      setSelectedId(filtered[0].id);
+    }
+  }, [filtered, selectedId]);
+
   return (
     <div className="h-full flex flex-col">
       <GsRealtimeStatus
