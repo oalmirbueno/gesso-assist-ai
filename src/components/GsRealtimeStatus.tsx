@@ -13,14 +13,24 @@ export function GsRealtimeStatus({
   conversationCount,
   totalMessageCount,
   selectedConversationId,
+  selectedContactId,
   selectedRemoteJid,
+  selectedContactPhone,
+  selectedDisplayName,
   messageCount,
+  lidConversationCount,
+  backfillEventCount,
 }: {
   conversationCount: number;
   totalMessageCount: number;
   selectedConversationId: string | null;
+  selectedContactId: string | null;
   selectedRemoteJid: string | null;
+  selectedContactPhone: string | null;
+  selectedDisplayName: string | null;
   messageCount: number;
+  lidConversationCount: number;
+  backfillEventCount: number;
 }) {
   const [status, setStatus] = useState<"connecting" | "connected" | "closed">(
     "connecting",
@@ -67,11 +77,26 @@ export function GsRealtimeStatus({
       <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
         {totalMessageCount} msgs total
       </Badge>
-      <Badge variant="secondary" className="h-4 px-1.5 text-[10px] font-mono">
-        id {selectedConversationId ?? "—"}
+      <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
+        {lidConversationCount} @lid
+      </Badge>
+      <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
+        {backfillEventCount} backfill
       </Badge>
       <Badge variant="secondary" className="h-4 px-1.5 text-[10px] font-mono">
-        jid {selectedRemoteJid ?? "—"}
+        conversation_id {selectedConversationId ?? "—"}
+      </Badge>
+      <Badge variant="secondary" className="h-4 px-1.5 text-[10px] font-mono">
+        contact_id {selectedContactId ?? "—"}
+      </Badge>
+      <Badge variant="secondary" className="h-4 px-1.5 text-[10px] font-mono">
+        remote_jid {selectedRemoteJid ?? "—"}
+      </Badge>
+      <Badge variant="secondary" className="h-4 px-1.5 text-[10px] font-mono">
+        phone {selectedContactPhone ?? "—"}
+      </Badge>
+      <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
+        display {selectedDisplayName ?? "—"}
       </Badge>
       <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
         {messageCount} msgs carregadas
