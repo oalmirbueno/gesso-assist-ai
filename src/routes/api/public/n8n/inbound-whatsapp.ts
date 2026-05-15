@@ -27,10 +27,13 @@ export const Route = createFileRoute("/api/public/n8n/inbound-whatsapp")({
           }
 
           const payload = (await request.json()) as N8nInboundPayload;
-          const { handleN8nInboundPayloadAdmin } = await import(
+          const { expandInboundPayloadBatch, handleN8nInboundPayloadAdmin } = await import(
             "@/services/inboundServerService.server"
           );
-          return json(await handleN8nInboundPayloadAdmin(payload));
+          const batch = expandInboundPayloadBatch(payload);
+          const results = [];
+          for (const item of batch) results.push(await handleN8nInboundPayloadAdmin(item));
+          return json(batch.length === 1 ? results[0] : { success: true, ok: results.length, results });
         } catch (err: any) {
           console.error("public n8n inbound error:", err);
           return json(
