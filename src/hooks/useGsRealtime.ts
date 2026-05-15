@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { isKnownWhatsappTestRecord, isProductionWhatsappConversation } from "@/lib/whatsappProduction";
 
 export interface GsContact {
   id: string;
@@ -35,6 +34,9 @@ export interface GsConversation {
   last_message_at: string | null;
   provider_instance: string | null;
   remote_jid: string | null;
+  summary: string | null;
+  ai_last_decision: Record<string, unknown> | null;
+  raw?: any;
   contact?: GsContact;
 }
 
@@ -49,8 +51,27 @@ export interface GsMessage {
   audio_url: string | null;
   transcript: string | null;
   intent: string | null;
+  ai_reply: string | null;
+  raw?: any;
   confidence: number | null;
   created_at: string;
+}
+
+export function jidLocalId(remoteJid?: string | null) {
+  return String(remoteJid ?? "").split("@")[0] || null;
+}
+
+export function getGsConversationDisplayName(conversation: Pick<GsConversation, "remote_jid" | "contact">) {
+  const contact = conversation.contact;
+  return (
+    contact?.display_name ||
+    contact?.raw?.pushName ||
+    contact?.raw?.push_name ||
+    contact?.name ||
+    jidLocalId(conversation.remote_jid) ||
+    contact?.phone ||
+    "Sem nome"
+  );
 }
 
 export interface GsSeller {
