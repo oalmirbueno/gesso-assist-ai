@@ -506,9 +506,7 @@ function ConversationView({
             <div className="font-semibold text-sm truncate">{displayName}</div>
             <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground truncate">
               <span>{phoneOrJid}</span>
-              {conv.remote_jid && <><span>·</span><span className="font-mono">{conv.remote_jid}</span></>}
-              {conv.intent && <><span>·</span><span>intenção: <span className="text-foreground">{conv.intent}</span></span></>}
-              {conv.ai_confidence != null && <span>· {Math.round(conv.ai_confidence * 100)}%</span>}
+              {conv.intent && <><span>·</span><span>{conv.intent}</span></>}
               {conv.funnel_stage && <><span>·</span><span>{FUNNEL_LABELS[conv.funnel_stage] ?? conv.funnel_stage}</span></>}
             </div>
           </div>
