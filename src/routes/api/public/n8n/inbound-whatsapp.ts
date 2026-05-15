@@ -28,7 +28,7 @@ export const Route = createFileRoute("/api/public/n8n/inbound-whatsapp")({
           const results = [];
           for (const item of batch) results.push(await handleN8nInboundPayloadAdmin(item));
           const first = results[0];
-          return json({ ...first, received: results.length, results });
+          return json({ ...first, received: results.length });
         } catch (err: any) {
           console.error("public n8n inbound error:", err);
           if (err?.message === "empty_message") {
