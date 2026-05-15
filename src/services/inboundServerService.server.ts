@@ -74,12 +74,17 @@ function normalizeInboundPayload(rawPayload: any): N8nInboundPayload {
     data?.remoteJid ??
     key?.remoteJid ??
     null;
+  const fromMe = Boolean(key?.fromMe ?? data?.fromMe ?? rawPayload?.fromMe);
+  // IMPORTANTE: a conversa é sempre identificada pelo CLIENTE (remoteJid),
+  // mesmo quando fromMe=true (resposta da IA/automação). Nunca usar data.sender
+  // como phone quando fromMe, pois sender = número do bot e geraria contato separado.
+  const remoteJidDigits = remoteJid && !String(remoteJid).endsWith("@lid") ? digits(remoteJid) : undefined;
   const phone =
     rawPayload?.contact?.phone ??
     rawPayload?.phone ??
     rawPayload?.contact_phone ??
-    data?.sender ??
-    (remoteJid && !String(remoteJid).endsWith("@lid") ? digits(remoteJid) : undefined);
+    remoteJidDigits ??
+    (fromMe ? undefined : data?.sender);
   const pushName =
     rawPayload?.contact?.pushName ??
     rawPayload?.contact?.push_name ??
@@ -90,7 +95,6 @@ function normalizeInboundPayload(rawPayload: any): N8nInboundPayload {
     rawPayload?.message?.push_name ??
     data?.pushName ??
     null;
-  const fromMe = Boolean(key?.fromMe ?? data?.fromMe ?? rawPayload?.fromMe);
   const timestamp = rawPayload?.message?.created_at ?? data?.messageTimestamp ?? rawPayload?.messageTimestamp;
   const createdAt = typeof timestamp === "number"
     ? new Date(timestamp > 9999999999 ? timestamp : timestamp * 1000).toISOString()
