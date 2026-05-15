@@ -168,14 +168,14 @@ export function useGsDiagnostics() {
     const [conversationResult, messageResult] = await Promise.all([
       supabase
         .from("gs_whatsapp_conversations" as any)
-        .select("id", { count: "exact", head: true }),
+        .select("id"),
       supabase
         .from("gs_whatsapp_messages" as any)
-        .select("id", { count: "exact", head: true }),
+        .select("id"),
     ]);
     setCounts({
-      conversations: conversationResult.count ?? 0,
-      messages: messageResult.count ?? 0,
+      conversations: conversationResult.data?.length ?? 0,
+      messages: messageResult.data?.length ?? 0,
     });
   }, []);
 
