@@ -337,7 +337,7 @@ function InboxView() {
 
         {/* CRM */}
         <aside className="hidden md:flex col-span-3 flex-col min-h-0 overflow-auto">
-          {selected ? <CrmPanel conv={selected} sellers={sellers} /> : (
+          {selected ? <CrmPanel conv={selected} sellers={sellers} messages={selectedMessages} /> : (
             <div className="p-6 text-xs text-muted-foreground">Selecione uma conversa para ver dados do cliente.</div>
           )}
         </aside>
@@ -467,9 +467,11 @@ function ConversationView({
   }
 
   const currentSeller = sellers.find((s) => s.id === conv.current_seller_id);
+  const displayName = getGsConversationDisplayName(conv);
+  const phoneOrJid = conv.contact?.phone || jidLocalId(conv.remote_jid) || conv.remote_jid;
 
   const initials =
-    (conv.contact?.display_name ?? conv.contact?.name ?? conv.contact?.phone ?? conv.remote_jid ?? "?")
+    (displayName ?? "?")
       .replace(/[^A-Za-zÀ-ÿ0-9 ]/g, "")
       .trim()
       .split(/\s+/)
@@ -486,9 +488,9 @@ function ConversationView({
             {initials}
           </div>
           <div className="min-w-0">
-            <div className="font-semibold text-sm truncate">{conv.contact?.display_name ?? conv.contact?.name ?? conv.contact?.phone ?? conv.remote_jid}</div>
+            <div className="font-semibold text-sm truncate">{displayName}</div>
             <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground truncate">
-              <span>{conv.contact?.phone}</span>
+              <span>{phoneOrJid}</span>
               {conv.remote_jid && <><span>·</span><span className="font-mono">{conv.remote_jid}</span></>}
               {conv.intent && <><span>·</span><span>intenção: <span className="text-foreground">{conv.intent}</span></span></>}
               {conv.ai_confidence != null && <span>· {Math.round(conv.ai_confidence * 100)}%</span>}
