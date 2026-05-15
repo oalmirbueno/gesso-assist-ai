@@ -201,6 +201,47 @@ export async function handleN8nInboundPayloadAdmin(
   if (!payload?.message?.direction || !payload?.message?.sender_type) {
     throw new Error("message.direction and message.sender_type required");
   }
+
+  // Early-out: if the payload carries zero usable content across all parts,
+  // skip BEFORE creating contact/conversation. Otherwise empty backfill
+  // payloads would spawn ghost contacts (e.g. instance-owner JIDs) with no
+  // visible message body in the inbox.
+  {
+    const earlyParts = normalizeMessageParts(payload.message) ?? [payload.message];
+    const anyContent = earlyParts.some((part: any) => {
+      const pRaw = { ...((payload.message.raw as any) ?? {}), ...((part?.raw as any) ?? {}) };
+      const audioMsg = pRaw?.message?.audioMessage ?? pRaw?.audioMessage;
+      const partAudio = part?.audio ?? (payload.message as any).audio ?? null;
+      const media =
+        part?.media ??
+        (payload.message as any).media ??
+        pRaw?.media ??
+        partAudio ??
+        (audioMsg ? { type: "audio", ...audioMsg } : null);
+      const audioUrl =
+        part?.audio_url ??
+        payload.message.audio_url ??
+        partAudio?.url ??
+        media?.url ??
+        audioMsg?.url ??
+        null;
+      const body = part?.body ?? part?.text ?? payload.message.body ?? null;
+      const transcript =
+        readTranscript(part, pRaw, media) ??
+        readTranscript(payload.message, payload.message.raw, (payload.message as any).media);
+      return hasText(body) || hasText(transcript) || Boolean(audioUrl) || Boolean(media?.url);
+    });
+    if (!anyContent) {
+      console.warn("[inbound] dropping empty payload (no contact/conversation created)", {
+        provider_message_id: payload.message.provider_message_id,
+        remote_jid:
+          payload.conversation?.remote_jid ??
+          (payload.meta as any)?.remote_jid ??
+          payload.contact?.phone,
+      });
+      return { success: true, contact_id: null as any, conversation_id: null as any, message_id: null as any };
+    }
+  }
   if (payload.event_type === "evolution_history_backfill" && !payload.message.provider_message_id) {
     throw new Error("message.provider_message_id required for evolution_history_backfill");
   }
