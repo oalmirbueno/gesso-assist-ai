@@ -343,7 +343,7 @@ export async function handleN8nInboundPayloadAdmin(
       .from("gs_whatsapp_conversations")
       .select("*")
       .eq("provider_instance", providerInstance)
-      .eq("external_id", externalId)
+      .eq("external_id" as any, externalId)
       .maybeSingle();
     if (error) throw error;
     byJid = byExternalId;
@@ -495,7 +495,7 @@ export async function handleN8nInboundPayloadAdmin(
         summary: (payload.ai as any)?.summary ?? null,
         raw: { ...(payload as any), remote_jid: canonicalRemoteJid, lid_jid: lidJid } as any,
         ...aiFields,
-      })
+      } as any)
       .select("*")
       .single();
     if (error) throw error;
@@ -517,7 +517,7 @@ export async function handleN8nInboundPayloadAdmin(
         contact_id: contact.id,
         provider_instance: providerInstance,
         remote_jid: effectiveRemoteJid,
-        external_id: externalId ?? conversation.external_id,
+        external_id: externalId ?? (conversation as any).external_id,
         status: payload.conversation?.status ?? conversation.status,
         ai_enabled: payload.conversation?.ai_enabled ?? conversation.ai_enabled,
         needs_human: payload.conversation?.needs_human ?? conversation.needs_human,
@@ -543,7 +543,7 @@ export async function handleN8nInboundPayloadAdmin(
           jid_aliases: Array.from(jidAliasSet),
         } as any,
         unread_count: isInbound ? (conversation.unread_count ?? 0) + 1 : conversation.unread_count,
-      })
+      } as any)
       .eq("id", conversation.id)
       .select("*")
       .single();
