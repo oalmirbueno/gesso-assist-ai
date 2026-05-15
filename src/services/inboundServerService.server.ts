@@ -256,7 +256,7 @@ export async function handleN8nInboundPayloadAdmin(
     null;
   const contactRaw = {
     ...(payload.contact as any),
-          remote_jid: canonicalRemoteJid,
+    remote_jid: canonicalRemoteJid,
     lid_jid: lidJid,
     pushName: displayName,
   };
