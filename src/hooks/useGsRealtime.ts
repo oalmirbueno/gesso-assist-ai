@@ -161,6 +161,39 @@ export function useGsMessages(conversationId: string | null) {
   return messages;
 }
 
+export function useGsDiagnostics(selectedConversationId: string | null) {
+  const [counts, setCounts] = useState({ conversations: 0, messages: 0 });
+
+  const reload = useCallback(async () => {
+    const [conversationResult, messageResult] = await Promise.all([
+      supabase
+        .from("gs_whatsapp_conversations" as any)
+        .select("id", { count: "exact", head: true }),
+      supabase
+        .from("gs_whatsapp_messages" as any)
+        .select("id", { count: "exact", head: true }),
+    ]);
+    setCounts({
+      conversations: conversationResult.count ?? 0,
+      messages: messageResult.count ?? 0,
+    });
+  }, []);
+
+  useEffect(() => {
+    reload();
+    const ch = supabase
+      .channel("gs-diagnostics")
+      .on("postgres_changes", { event: "*", schema: "public", table: "gs_whatsapp_conversations" }, reload)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "gs_whatsapp_messages" }, reload)
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, [reload, selectedConversationId]);
+
+  return counts;
+}
+
 export function useGsTable<T = any>(table: string, order?: { col: string; asc?: boolean }) {
   const [data, setData] = useState<T[]>([]);
   const reload = useCallback(async () => {
