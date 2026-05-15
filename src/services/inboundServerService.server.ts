@@ -17,6 +17,38 @@ function readBody(rawMessage: any) {
   );
 }
 
+function readTranscript(message: any, raw: any, media: any) {
+  return (
+    message?.transcript ??
+    message?.transcription ??
+    message?.audio?.transcript ??
+    message?.audio?.transcription ??
+    media?.transcript ??
+    media?.transcription ??
+    raw?.transcript ??
+    raw?.transcription ??
+    raw?.message?.transcript ??
+    raw?.message?.transcription ??
+    raw?.audio?.transcript ??
+    raw?.audio?.transcription ??
+    raw?.message?.audioMessage?.transcript ??
+    raw?.message?.audioMessage?.transcription ??
+    null
+  );
+}
+
+function hasText(value: unknown) {
+  return String(value ?? "").trim().length > 0;
+}
+
+function isLidJid(value: unknown) {
+  return String(value ?? "").endsWith("@lid");
+}
+
+function isClientWhatsappJid(value: unknown) {
+  return String(value ?? "").endsWith("@s.whatsapp.net");
+}
+
 function normalizeMessageParts(message: any) {
   const candidates =
     message?.parts ??
