@@ -245,26 +245,12 @@ function InboxView() {
 
   return (
     <div className="h-full flex flex-col">
-      <GsRealtimeStatus
-        conversationCount={diagnostics.conversations || conversations.length}
-        totalMessageCount={diagnostics.messages}
-        selectedConversationId={selectedId}
-        selectedContactId={selected?.contact_id ?? null}
-        selectedRemoteJid={selected?.remote_jid ?? null}
-        selectedContactPhone={selected?.contact?.phone ?? null}
-        selectedDisplayName={selected ? getGsConversationDisplayName(selected) : null}
-        messageCount={selectedMessages.length}
-        lidConversationCount={diagnostics.lidConversations}
-        backfillEventCount={diagnostics.backfillEvents}
-      />
-      {/* stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 p-4 border-b bg-card/50">
-        <StatCard icon={MessageSquare} label="Conversas ativas" value={stats.ativas} tone="info" />
+      {/* stats minimalistas */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 p-3 border-b bg-card/40">
+        <StatCard icon={MessageSquare} label="Ativas" value={stats.ativas} tone="info" />
         <StatCard icon={AlertTriangle} label="Precisam humano" value={stats.human} tone="warn" />
         <StatCard icon={Bot} label="IA ativa" value={stats.ia} tone="ok" />
-        <StatCard icon={Mic} label="Áudios hoje" value="·" />
-        <StatCard icon={FileText} label="Orçamentos abertos" value={stats.orc} />
-        <StatCard icon={Headphones} label="Vendedores ativos" value={stats.sellersOk} tone="ok" />
+        <StatCard icon={FileText} label="Orçamentos" value={stats.orc} />
       </div>
 
       {/* main 3-pane */}
