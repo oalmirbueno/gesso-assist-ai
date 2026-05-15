@@ -61,9 +61,9 @@ export function jidLocalId(remoteJid?: string | null) {
   return String(remoteJid ?? "").split("@")[0] || null;
 }
 
-export function getGsConversationDisplayName(conversation: Pick<GsConversation, "remote_jid" | "contact">) {
+export function getGsConversationDisplayName(conversation: Pick<GsConversation, "remote_jid" | "contact">): string {
   const contact = conversation.contact;
-  return (
+  return String(
     contact?.display_name ||
     contact?.raw?.pushName ||
     contact?.raw?.push_name ||
