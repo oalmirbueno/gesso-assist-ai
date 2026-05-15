@@ -5,6 +5,7 @@ export interface GsContact {
   id: string;
   phone: string;
   name: string | null;
+  display_name: string | null;
   city: string | null;
   neighborhood: string | null;
   interest: string | null;
@@ -30,12 +31,15 @@ export interface GsConversation {
   ai_draft_reply: string | null;
   unread_count: number;
   last_message_at: string | null;
+  provider_instance: string | null;
+  remote_jid: string | null;
   contact?: GsContact;
 }
 
 export interface GsMessage {
   id: string;
   conversation_id: string;
+  provider_message_id: string | null;
   direction: string;
   sender_type: string;
   message_type: string;
@@ -81,11 +85,12 @@ export function useGsConversations() {
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    const { data: rows } = await supabase
+    const { data: rows, error } = await supabase
       .from("gs_whatsapp_conversations" as any)
       .select("*, contact:gs_whatsapp_contacts(*)")
       .order("last_message_at", { ascending: false, nullsFirst: false })
       .limit(200);
+    if (error) console.error("load gs conversations failed:", error);
     setData((rows ?? []) as any);
     setLoading(false);
   }, []);
@@ -93,7 +98,7 @@ export function useGsConversations() {
   useEffect(() => {
     load();
     const ch = supabase
-      .channel("gs-inbox")
+      .channel(`gs-inbox-${Date.now()}-${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "gs_whatsapp_conversations" }, load)
       .on("postgres_changes", { event: "*", schema: "public", table: "gs_whatsapp_contacts" }, load)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "gs_whatsapp_messages" }, load)
@@ -116,16 +121,17 @@ export function useGsMessages(conversationId: string | null) {
     }
     let alive = true;
     (async () => {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("gs_whatsapp_messages" as any)
         .select("*")
         .eq("conversation_id", conversationId)
         .order("created_at", { ascending: true });
+      if (error) console.error("load gs messages failed:", error);
       if (alive) setMessages((data ?? []) as any);
     })();
 
     const ch = supabase
-      .channel(`gs-msg-${conversationId}`)
+      .channel(`gs-msg-${conversationId}-${Date.now()}-${Math.random().toString(36).slice(2)}`)
       .on(
         "postgres_changes",
         {
@@ -134,7 +140,16 @@ export function useGsMessages(conversationId: string | null) {
           table: "gs_whatsapp_messages",
           filter: `conversation_id=eq.${conversationId}`,
         },
-        (p) => setMessages((m) => [...m, p.new as any]),
+        (p) =>
+          setMessages((current) => {
+            const next = current.some((m) => m.id === (p.new as any).id)
+              ? current.map((m) => (m.id === (p.new as any).id ? (p.new as any) : m))
+              : [...current, p.new as any];
+            return next.sort(
+              (a, b) =>
+                new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+            );
+          }),
       )
       .subscribe();
     return () => {
@@ -144,6 +159,39 @@ export function useGsMessages(conversationId: string | null) {
   }, [conversationId]);
 
   return messages;
+}
+
+export function useGsDiagnostics() {
+  const [counts, setCounts] = useState({ conversations: 0, messages: 0 });
+
+  const reload = useCallback(async () => {
+    const [conversationResult, messageResult] = await Promise.all([
+      supabase
+        .from("gs_whatsapp_conversations" as any)
+        .select("id"),
+      supabase
+        .from("gs_whatsapp_messages" as any)
+        .select("id"),
+    ]);
+    setCounts({
+      conversations: conversationResult.data?.length ?? 0,
+      messages: messageResult.data?.length ?? 0,
+    });
+  }, []);
+
+  useEffect(() => {
+    reload();
+    const ch = supabase
+      .channel(`gs-diagnostics-${Date.now()}-${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "gs_whatsapp_conversations" }, reload)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "gs_whatsapp_messages" }, reload)
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, [reload]);
+
+  return counts;
 }
 
 export function useGsTable<T = any>(table: string, order?: { col: string; asc?: boolean }) {

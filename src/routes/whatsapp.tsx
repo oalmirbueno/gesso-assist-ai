@@ -17,8 +17,8 @@ import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import {
-  useGsConversations, useGsMessages, useGsTable,
-  type GsConversation, type GsSeller, type GsSlot, type GsFact,
+  useGsConversations, useGsDiagnostics, useGsMessages, useGsTable,
+  type GsConversation, type GsMessage, type GsSeller, type GsSlot, type GsFact,
 } from "@/hooks/useGsRealtime";
 import { gsService, type GsCommandResult } from "@/services/gsGessoWhatsAppService";
 import { GsRealtimeStatus } from "@/components/GsRealtimeStatus";
@@ -60,7 +60,7 @@ function useGsEvents(conversationId: string | null, limit = 8) {
       if (alive) setEvents((data ?? []) as any);
     })();
     const ch = supabase
-      .channel(`gs-events-${conversationId}`)
+      .channel(`gs-events-${conversationId}-${Date.now()}-${Math.random().toString(36).slice(2)}`)
       .on(
         "postgres_changes",
         {
@@ -222,11 +222,15 @@ function InboxView() {
 
   const selected = conversations.find((c) => c.id === selectedId) ?? null;
   const selectedMessages = useGsMessages(selectedId);
+  const diagnostics = useGsDiagnostics();
 
   return (
     <div className="h-full flex flex-col">
       <GsRealtimeStatus
-        conversationCount={conversations.length}
+        conversationCount={diagnostics.conversations || conversations.length}
+        totalMessageCount={diagnostics.messages}
+        selectedConversationId={selectedId}
+        selectedRemoteJid={selected?.remote_jid ?? null}
         messageCount={selectedMessages.length}
       />
       {/* stats */}
@@ -277,12 +281,12 @@ function InboxView() {
                       }`}>
                       <div className="flex items-center justify-between gap-2">
                         <div className="font-medium text-sm truncate">
-                          {c.contact?.name ?? c.contact?.phone ?? "Sem nome"}
+                          {c.contact?.display_name ?? c.contact?.name ?? c.contact?.phone ?? c.remote_jid ?? "Sem nome"}
                         </div>
                         <span className="text-[10px] text-muted-foreground shrink-0">{fmtTime(c.last_message_at)}</span>
                       </div>
                       <div className="text-[11px] text-muted-foreground truncate">
-                        {c.contact?.phone}{c.contact?.neighborhood ? ` · ${c.contact.neighborhood}` : ""}
+                        {c.contact?.phone}{c.remote_jid ? ` · ${c.remote_jid}` : ""}{c.contact?.neighborhood ? ` · ${c.contact.neighborhood}` : ""}
                       </div>
                       <div className="flex flex-wrap gap-1 mt-1.5">
                         <Badge variant="outline" className="text-[9px] py-0 h-4">
@@ -303,7 +307,7 @@ function InboxView() {
 
         {/* chat */}
         <section className="col-span-12 md:col-span-5 lg:col-span-6 flex flex-col min-h-0 border-r">
-          {selected ? <ConversationView conv={selected} sellers={sellers} /> : <NoConversationSelected />}
+          {selected ? <ConversationView conv={selected} sellers={sellers} messages={selectedMessages} /> : <NoConversationSelected />}
         </section>
 
         {/* CRM */}
@@ -348,8 +352,15 @@ function NoConversationSelected() {
 }
 
 /* ============== CONVERSATION VIEW ============== */
-function ConversationView({ conv, sellers }: { conv: GsConversation; sellers: GsSeller[] }) {
-  const messages = useGsMessages(conv.id);
+function ConversationView({
+  conv,
+  sellers,
+  messages,
+}: {
+  conv: GsConversation;
+  sellers: GsSeller[];
+  messages: GsMessage[];
+}) {
   const events = useGsEvents(conv.id);
   const [draft, setDraft] = useState("");
   const [aiDraft, setAiDraft] = useState<{ text: string; pending: boolean } | null>(null);
@@ -434,7 +445,7 @@ function ConversationView({ conv, sellers }: { conv: GsConversation; sellers: Gs
   const currentSeller = sellers.find((s) => s.id === conv.current_seller_id);
 
   const initials =
-    (conv.contact?.name ?? conv.contact?.phone ?? "?")
+    (conv.contact?.display_name ?? conv.contact?.name ?? conv.contact?.phone ?? conv.remote_jid ?? "?")
       .replace(/[^A-Za-zÀ-ÿ0-9 ]/g, "")
       .trim()
       .split(/\s+/)
@@ -451,9 +462,10 @@ function ConversationView({ conv, sellers }: { conv: GsConversation; sellers: Gs
             {initials}
           </div>
           <div className="min-w-0">
-            <div className="font-semibold text-sm truncate">{conv.contact?.name ?? conv.contact?.phone}</div>
+            <div className="font-semibold text-sm truncate">{conv.contact?.display_name ?? conv.contact?.name ?? conv.contact?.phone ?? conv.remote_jid}</div>
             <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground truncate">
               <span>{conv.contact?.phone}</span>
+              {conv.remote_jid && <><span>·</span><span className="font-mono">{conv.remote_jid}</span></>}
               {conv.intent && <><span>·</span><span>intenção: <span className="text-foreground">{conv.intent}</span></span></>}
               {conv.ai_confidence != null && <span>· {Math.round(conv.ai_confidence * 100)}%</span>}
               {conv.funnel_stage && <><span>·</span><span>{FUNNEL_LABELS[conv.funnel_stage] ?? conv.funnel_stage}</span></>}

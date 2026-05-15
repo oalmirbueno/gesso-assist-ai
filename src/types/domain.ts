@@ -113,9 +113,14 @@ export interface AiLearningSuggestion {
 
 // ===== n8n inbound payload =====
 export interface N8nInboundPayload {
+  event_type?: string;
   contact: {
-    phone: string;
+    phone?: string;
     name?: string;
+    display_name?: string;
+    pushName?: string;
+    push_name?: string;
+    lid?: string;
     source?: string;
     stage?: string;
     tags?: string[];
@@ -124,6 +129,8 @@ export interface N8nInboundPayload {
     customer_type?: string;
   };
   conversation?: {
+    external_id?: string;
+    remote_jid?: string;
     status?: ConvStatus | string;
     ai_enabled?: boolean;
     needs_human?: boolean;
@@ -138,6 +145,7 @@ export interface N8nInboundPayload {
     audio_url?: string;
     transcript?: string;
     provider_message_id?: string;
+    created_at?: string;
     raw?: Record<string, unknown>;
   };
   ai?: {
