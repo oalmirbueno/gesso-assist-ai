@@ -183,11 +183,16 @@ function DevWebhook() {
               </p>
             </div>
           )}
-          <Textarea
-            value={json}
-            onChange={(e) => setJson(e.target.value)}
-            className="font-mono text-xs min-h-[420px]"
-          />
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Payload JSON
+            </label>
+            <Textarea
+              value={json}
+              onChange={(e) => setJson(e.target.value)}
+              className="font-mono text-xs min-h-[520px] leading-relaxed"
+            />
+          </div>
         </Card>
 
         {result && (
