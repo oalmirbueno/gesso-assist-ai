@@ -28,7 +28,7 @@ export function GsRealtimeStatus({
 
   useEffect(() => {
     const ch = supabase
-      .channel("gs-status-probe")
+      .channel(`gs-status-probe-${Date.now()}-${Math.random().toString(36).slice(2)}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "gs_whatsapp_messages" },
