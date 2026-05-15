@@ -51,10 +51,24 @@ function Dashboard() {
   const [events, setEvents] = useState<RecentEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
-  async function load() {
+  function commit(convs: unknown[] = [], evts: RecentEvent[] = []) {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
+    const list = convs.filter(isProductionWhatsappConversation) as any[];
+    setStats({
+      novas: list.filter((c) => c.status === "nova").length,
+      precisaHumano: list.filter((c) => c.needs_human).length,
+      emAtendimento: list.filter((c) => c.status === "em_atendimento").length,
+      resolvidasHoje: list.filter(
+        (c) => c.status === "resolvida" && new Date(c.updated_at) >= todayStart,
+      ).length,
+      leadsQuentes: list.filter((c) => c.intent === "compra_quente" || c.needs_human).length,
+      iaAtiva: list.filter((c) => c.ai_enabled).length,
+    });
+    setEvents(evts.filter(isProductionWhatsappEvent));
+  }
 
+  async function load() {
     const [convs, evts] = await Promise.all([
       supabase
         .from("gs_whatsapp_conversations")
@@ -66,20 +80,7 @@ function Dashboard() {
         .limit(8),
     ]);
 
-    const list = ((convs.data ?? []) as any[]).filter(isProductionWhatsappConversation);
-    const productionEvents = ((evts.data as RecentEvent[]) ?? []).filter(isProductionWhatsappEvent);
-    setStats({
-      novas: list.filter((c) => c.status === "nova").length,
-      precisaHumano: list.filter((c) => c.needs_human).length,
-      emAtendimento: list.filter((c) => c.status === "em_atendimento").length,
-      resolvidasHoje: list.filter(
-        (c) => c.status === "resolvida" && new Date(c.updated_at) >= todayStart,
-      ).length,
-      leadsQuentes: list.filter((c) => c.intent === "compra_quente" || c.needs_human)
-        .length,
-      iaAtiva: list.filter((c) => c.ai_enabled).length,
-    });
-    setEvents(productionEvents);
+    commit((convs.data ?? []) as any[], (evts.data as RecentEvent[]) ?? []);
     setLoading(false);
   }
 
