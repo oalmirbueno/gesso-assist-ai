@@ -77,6 +77,7 @@ function Dashboard() {
   }
 
   async function load() {
+    setLoading(true);
     const [convs, evts] = await Promise.all([
       supabase
         .from("gs_whatsapp_conversations")
@@ -88,6 +89,7 @@ function Dashboard() {
         .limit(50),
     ]);
 
+    if (convs.error || evts.error) console.error("dashboard load failed", convs.error ?? evts.error);
     commit((convs.data ?? []) as any[], (evts.data as RecentEvent[]) ?? []);
     setLoading(false);
   }
