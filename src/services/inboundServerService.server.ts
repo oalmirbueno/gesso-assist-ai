@@ -36,6 +36,24 @@ function withUniquePartProviderId(base: string | null | undefined, index: number
   return total > 1 ? `${base}_${index + 1}` : base;
 }
 
+export function expandInboundPayloadBatch(rawPayload: any): N8nInboundPayload[] {
+  if (Array.isArray(rawPayload)) return rawPayload as N8nInboundPayload[];
+  const messages =
+    rawPayload?.messages ??
+    rawPayload?.message_parts ??
+    rawPayload?.data?.messages ??
+    rawPayload?.data?.messages?.records ??
+    null;
+  if (!Array.isArray(messages)) return [rawPayload as N8nInboundPayload];
+  return messages.map((message: any) => ({
+    ...rawPayload,
+    contact: message.contact ?? rawPayload.contact,
+    conversation: message.conversation ?? rawPayload.conversation,
+    message: { ...(typeof message === "string" ? { body: message } : message) },
+    meta: { ...(rawPayload.meta ?? {}), ...(message.meta ?? {}) },
+  })) as N8nInboundPayload[];
+}
+
 function normalizeInboundPayload(rawPayload: any): N8nInboundPayload {
   const data = rawPayload?.data ?? rawPayload?.message?.raw?.data ?? {};
   const key = data?.key ?? rawPayload?.key ?? rawPayload?.message?.raw?.key ?? {};
