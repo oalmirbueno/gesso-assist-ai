@@ -555,13 +555,40 @@ function ConversationView({
             </div>
           )}
           {messages.map((m, i) => {
+            const isSystem = m.sender_type === "system";
             const inbound = m.direction === "inbound";
-            const ps = (m as any).provider_status as string | undefined;
+            const isAi = !inbound && m.sender_type === "ai";
+            const isHuman = !inbound && m.sender_type === "human";
+            const ps = m.provider_status as string | undefined;
             const prev = messages[i - 1];
-            const grouped = prev && prev.direction === m.direction;
+            const grouped = prev && prev.direction === m.direction && prev.sender_type === m.sender_type;
+            const audioUrl =
+              m.audio_url ||
+              m.media?.url ||
+              m.media?.audio_url ||
+              m.raw?.message?.audioMessage?.url ||
+              m.raw?.audio_url ||
+              null;
+            const isAudio = m.message_type === "audio" || Boolean(audioUrl);
+
+            if (isSystem) {
+              return (
+                <div key={m.id} className="flex justify-center">
+                  <div className="text-[10px] uppercase tracking-wide text-muted-foreground bg-muted/60 rounded-full px-3 py-1">
+                    {m.body || m.intent || "evento do sistema"} · {fmtTime(m.created_at)}
+                  </div>
+                </div>
+              );
+            }
+
             const tail = inbound
               ? grouped ? "rounded-2xl" : "rounded-2xl rounded-tl-sm"
               : grouped ? "rounded-2xl" : "rounded-2xl rounded-tr-sm";
+            const senderLabel = isAi ? "IA · GS" : isHuman ? "Atendente" : "GS Gesso";
+            const senderBadgeColor = isAi
+              ? "bg-emerald-500/15 text-emerald-700 border-emerald-500/30"
+              : "bg-sky-500/15 text-sky-700 border-sky-500/30";
+
             return (
               <div key={m.id} className={`flex ${inbound ? "justify-start" : "justify-end"} ${grouped ? "mt-0.5" : "mt-2"}`}>
                 <div
@@ -572,24 +599,42 @@ function ConversationView({
                   }}
                 >
                   {!inbound && !grouped && (
-                    <div className="text-[10px] uppercase tracking-wide font-semibold text-foreground/50 mb-0.5">
-                      {m.sender_type === "ai" ? "IA · GS" : "Atendente"}
+                    <div className="flex items-center gap-1 mb-0.5">
+                      <span className={`text-[9px] uppercase tracking-wide font-semibold border rounded px-1 py-px ${senderBadgeColor}`}>
+                        {senderLabel}
+                      </span>
                     </div>
                   )}
-                  {m.audio_url && <audio controls src={m.audio_url} className="mb-1 max-w-full h-8" />}
-                  {m.transcript && (
-                    <div className="text-[11px] italic mb-1 text-foreground/60">
-                      🎙 {m.transcript}
+                  {isAudio && (
+                    <div className="mb-1 space-y-1">
+                      {audioUrl ? (
+                        <audio controls src={audioUrl} className="max-w-full h-8" />
+                      ) : (
+                        <div className="text-[11px] text-foreground/70 flex items-center gap-1.5 bg-foreground/5 rounded px-2 py-1">
+                          <Mic className="h-3 w-3" /> Áudio sem mídia disponível
+                        </div>
+                      )}
+                      {m.transcript ? (
+                        <div className="text-[11px] italic text-foreground/70">🎙 {m.transcript}</div>
+                      ) : (
+                        <div className="text-[11px] italic text-foreground/50">
+                          Áudio recebido — transcrição pendente
+                        </div>
+                      )}
                     </div>
+                  )}
+                  {!isAudio && m.transcript && (
+                    <div className="text-[11px] italic mb-1 text-foreground/60">🎙 {m.transcript}</div>
                   )}
                   {m.body && <div className="whitespace-pre-wrap leading-snug">{m.body}</div>}
                   <div className="text-[10px] mt-1 flex items-center gap-1.5 justify-end text-foreground/50">
                     {m.intent && <span>{m.intent}</span>}
                     {m.confidence != null && <span>({Math.round(m.confidence * 100)}%)</span>}
                     <span>{fmtTime(m.created_at)}</span>
-                    {!inbound && ps === "pending" && <span title="Aguardando envio">🕓</span>}
-                    {!inbound && ps === "sent" && <span className="text-sky-600" title="Enviado">✓✓</span>}
-                    {!inbound && ps === "failed" && <span className="text-red-500" title="Falhou">⚠</span>}
+                    {!inbound && ps === "pending" && <span title="Aguardando envio">🕓 Aguardando</span>}
+                    {!inbound && ps === "sent" && <span className="text-sky-600" title="Enviado">✓✓ Enviado</span>}
+                    {!inbound && ps === "delivered" && <span className="text-sky-600" title="Entregue">✓✓</span>}
+                    {!inbound && ps === "failed" && <span className="text-red-500" title="Falhou">⚠ Falhou</span>}
                   </div>
                 </div>
               </div>
@@ -597,6 +642,9 @@ function ConversationView({
           })}
         </div>
       </ScrollArea>
+
+      {/* diagnóstico de mensagens */}
+      <MessageDiagnostics messages={messages} />
 
       {/* eventos recentes (auditoria) */}
       {showAudit && (
