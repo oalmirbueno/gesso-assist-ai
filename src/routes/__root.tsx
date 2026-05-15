@@ -81,10 +81,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "description", content: "Central de atendimento WhatsApp com IA da GS Gesso" },
       { name: "author", content: "GS Gesso" },
       { property: "og:title", content: "GS Gesso, Atendimento IA" },
-      { property: "og:description", content: "Central de atendimento WhatsApp com IA" },
+      { property: "og:description", content: "Central de atendimento WhatsApp com IA da GS Gesso" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "GS Gesso, Atendimento IA" },
+      { name: "twitter:description", content: "Central de atendimento WhatsApp com IA da GS Gesso" },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/20fac573-ef78-40ee-a97c-91b031a202ba/id-preview-1766a376--24127c32-3a74-4a55-aa63-6a278dbf6d23.lovable.app-1778870087820.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/20fac573-ef78-40ee-a97c-91b031a202ba/id-preview-1766a376--24127c32-3a74-4a55-aa63-6a278dbf6d23.lovable.app-1778870087820.png" },
     ],
     links: [
       {
