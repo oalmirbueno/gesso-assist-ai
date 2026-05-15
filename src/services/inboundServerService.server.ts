@@ -66,6 +66,9 @@ function normalizeInboundPayload(rawPayload: any): N8nInboundPayload {
     rawPayload?.jid ??
     rawPayload?.meta?.remote_jid ??
     rawPayload?.meta?.jid ??
+    rawPayload?.message?.remote_jid ??
+    rawPayload?.message?.remoteJid ??
+    rawPayload?.message?.key?.remoteJid ??
     rawMessage?.raw?.remote_jid ??
     rawMessage?.raw?.key?.remoteJid ??
     data?.remoteJid ??
@@ -83,6 +86,8 @@ function normalizeInboundPayload(rawPayload: any): N8nInboundPayload {
     rawPayload?.contact?.display_name ??
     rawPayload?.contact?.name ??
     rawPayload?.pushName ??
+    rawPayload?.message?.pushName ??
+    rawPayload?.message?.push_name ??
     data?.pushName ??
     null;
   const fromMe = Boolean(key?.fromMe ?? data?.fromMe ?? rawPayload?.fromMe);
