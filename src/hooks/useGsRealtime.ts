@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { isProductionWhatsappConversation } from "@/lib/whatsappProduction";
+import { isKnownWhatsappTestRecord, isProductionWhatsappConversation } from "@/lib/whatsappProduction";
 
 export interface GsContact {
   id: string;
