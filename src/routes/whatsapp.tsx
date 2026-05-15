@@ -694,11 +694,17 @@ function ConversationView({
 }
 
 /* ============== CRM PANEL ============== */
-function CrmPanel({ conv }: { conv: GsConversation; sellers: GsSeller[] }) {
+function CrmPanel({ conv, messages }: { conv: GsConversation; sellers: GsSeller[]; messages: GsMessage[] }) {
   const c = conv.contact;
   const [stage, setStage] = useState(c?.stage ?? "novo");
   const [notes, setNotes] = useState(c?.notes ?? "");
   const [nextAction, setNextAction] = useState(c?.next_action ?? "");
+  const latestIntent = [...messages].reverse().find((m) => m.intent)?.intent ?? conv.intent;
+  const latestAiReply = [...messages].reverse().find((m) => m.ai_reply)?.ai_reply ?? conv.ai_draft_reply;
+  const aiDecision = (conv.ai_last_decision ?? {}) as any;
+  const collectedFields = aiDecision.collected_fields ?? aiDecision.collected ?? null;
+  const missingFields = aiDecision.missing_fields ?? aiDecision.missing ?? null;
+  const displayName = getGsConversationDisplayName(conv);
 
   async function save() {
     if (!c) return;
@@ -712,8 +718,19 @@ function CrmPanel({ conv }: { conv: GsConversation; sellers: GsSeller[] }) {
     <div className="p-4 space-y-4 text-sm">
       <div>
         <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">Cliente</div>
-        <div className="font-semibold">{c.name ?? "Sem nome"}</div>
-        <div className="text-xs text-muted-foreground">{c.phone}</div>
+        <div className="font-semibold">{displayName}</div>
+        <div className="text-xs text-muted-foreground font-mono">{c.phone || jidLocalId(conv.remote_jid) || "·"}</div>
+      </div>
+
+      <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+        <Field label="Resumo" value={conv.summary} />
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <Field label="Última intenção" value={latestIntent} />
+          <Field label="Etapa" value={FUNNEL_LABELS[c.stage] ?? c.stage} />
+        </div>
+        {latestAiReply && <Field label="Última resposta IA" value={latestAiReply} />}
+        {collectedFields && <Field label="Campos coletados" value={JSON.stringify(collectedFields)} />}
+        {missingFields && <Field label="Campos faltantes" value={Array.isArray(missingFields) ? missingFields.join(", ") : JSON.stringify(missingFields)} />}
       </div>
 
       <div className="grid grid-cols-2 gap-2 text-xs">
