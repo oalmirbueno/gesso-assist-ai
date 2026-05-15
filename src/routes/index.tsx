@@ -54,7 +54,7 @@ function Dashboard() {
   function commit(convs: unknown[] = [], evts: RecentEvent[] = []) {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
-    const list = convs.filter(isProductionWhatsappConversation) as any[];
+    const list = (convs as any[]).filter(isProductionWhatsappConversation);
     setStats({
       novas: list.filter((c) => c.status === "nova").length,
       precisaHumano: list.filter((c) => c.needs_human).length,
