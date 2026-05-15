@@ -85,7 +85,9 @@ function normalizeInboundPayload(rawPayload: any): N8nInboundPayload {
     rawPayload?.contact_phone ??
     remoteJidDigits ??
     (fromMe ? undefined : data?.sender);
-  const pushName =
+  // Quando fromMe=true, pushName costuma ser "Você" (perspectiva do bot).
+  // Esses nomes não devem virar nome do contato.
+  const rawPushName =
     rawPayload?.contact?.pushName ??
     rawPayload?.contact?.push_name ??
     rawPayload?.contact?.display_name ??
@@ -95,6 +97,9 @@ function normalizeInboundPayload(rawPayload: any): N8nInboundPayload {
     rawPayload?.message?.push_name ??
     data?.pushName ??
     null;
+  const isSelfReferenceName = (n: any) =>
+    typeof n === "string" && /^(voc[eê]|you|me|eu)$/i.test(n.trim());
+  const pushName = fromMe && isSelfReferenceName(rawPushName) ? null : rawPushName;
   const timestamp = rawPayload?.message?.created_at ?? data?.messageTimestamp ?? rawPayload?.messageTimestamp;
   const createdAt = typeof timestamp === "number"
     ? new Date(timestamp > 9999999999 ? timestamp : timestamp * 1000).toISOString()
