@@ -196,6 +196,7 @@ function InboxView() {
   const [filter, setFilter] = useState("todas");
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const messageSearchIndex = useGsMessageSearchIndex();
 
   const stats = useMemo(() => {
     const ativas = conversations.filter((c) => !["resolvida"].includes(c.status)).length;
@@ -218,12 +219,15 @@ function InboxView() {
     if (search.trim()) {
       const s = search.toLowerCase();
       arr = arr.filter((c) =>
-        [c.contact?.name, c.contact?.phone, c.contact?.neighborhood, c.contact?.interest, c.intent]
-          .filter(Boolean).some((v) => String(v).toLowerCase().includes(s)),
+        [
+          getGsConversationDisplayName(c), c.remote_jid, jidLocalId(c.remote_jid), c.contact?.phone,
+          c.contact?.display_name, c.contact?.name, c.contact?.raw?.pushName, c.contact?.neighborhood,
+          c.contact?.interest, c.intent, c.summary, messageSearchIndex[c.id],
+        ].some((v) => includesSearch(v, s)),
       );
     }
     return arr;
-  }, [conversations, filter, search]);
+  }, [conversations, filter, messageSearchIndex, search]);
 
   const selected = conversations.find((c) => c.id === selectedId) ?? null;
   const selectedMessages = useGsMessages(selectedId);
@@ -245,8 +249,13 @@ function InboxView() {
         conversationCount={diagnostics.conversations || conversations.length}
         totalMessageCount={diagnostics.messages}
         selectedConversationId={selectedId}
+        selectedContactId={selected?.contact_id ?? null}
         selectedRemoteJid={selected?.remote_jid ?? null}
+        selectedContactPhone={selected?.contact?.phone ?? null}
+        selectedDisplayName={selected ? getGsConversationDisplayName(selected) : null}
         messageCount={selectedMessages.length}
+        lidConversationCount={diagnostics.lidConversations}
+        backfillEventCount={diagnostics.backfillEvents}
       />
       {/* stats */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 p-4 border-b bg-card/50">
@@ -288,6 +297,7 @@ function InboxView() {
               {filtered.map((c) => {
                 const seller = sellers.find((s) => s.id === c.current_seller_id);
                 const active = c.id === selectedId;
+                const displayName = getGsConversationDisplayName(c);
                 return (
                   <li key={c.id}>
                     <button onClick={() => setSelectedId(c.id)}
@@ -296,12 +306,12 @@ function InboxView() {
                       }`}>
                       <div className="flex items-center justify-between gap-2">
                         <div className="font-medium text-sm truncate">
-                          {c.contact?.display_name ?? c.contact?.name ?? c.contact?.phone ?? c.remote_jid ?? "Sem nome"}
+                          {displayName}
                         </div>
                         <span className="text-[10px] text-muted-foreground shrink-0">{fmtTime(c.last_message_at)}</span>
                       </div>
                       <div className="text-[11px] text-muted-foreground truncate">
-                        {c.contact?.phone}{c.remote_jid ? ` · ${c.remote_jid}` : ""}{c.contact?.neighborhood ? ` · ${c.contact.neighborhood}` : ""}
+                        {c.contact?.phone || jidLocalId(c.remote_jid)}{c.remote_jid ? ` · ${c.remote_jid}` : ""}{c.contact?.neighborhood ? ` · ${c.contact.neighborhood}` : ""}
                       </div>
                       <div className="flex flex-wrap gap-1 mt-1.5">
                         <Badge variant="outline" className="text-[9px] py-0 h-4">
