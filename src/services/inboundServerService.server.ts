@@ -116,7 +116,8 @@ function normalizeInboundPayload(rawPayload: any): N8nInboundPayload {
   // IMPORTANTE: a conversa é sempre identificada pelo CLIENTE (remoteJid),
   // mesmo quando fromMe=true (resposta da IA/automação). Nunca usar data.sender
   // como phone quando fromMe, pois sender = número do bot e geraria contato separado.
-  const remoteJidDigits = remoteJid && !String(remoteJid).endsWith("@lid") ? digits(remoteJid) : undefined;
+  const remoteJidDigits =
+    remoteJid && !String(remoteJid).endsWith("@lid") ? digits(remoteJid) : undefined;
   const phone =
     rawPayload?.contact?.phone ??
     rawPayload?.phone ??
@@ -138,10 +139,12 @@ function normalizeInboundPayload(rawPayload: any): N8nInboundPayload {
   const isSelfReferenceName = (n: any) =>
     typeof n === "string" && /^(voc[eê]|you|me|eu)$/i.test(n.trim());
   const pushName = fromMe && isSelfReferenceName(rawPushName) ? null : rawPushName;
-  const timestamp = rawPayload?.message?.created_at ?? data?.messageTimestamp ?? rawPayload?.messageTimestamp;
-  const createdAt = typeof timestamp === "number"
-    ? new Date(timestamp > 9999999999 ? timestamp : timestamp * 1000).toISOString()
-    : timestamp;
+  const timestamp =
+    rawPayload?.message?.created_at ?? data?.messageTimestamp ?? rawPayload?.messageTimestamp;
+  const createdAt =
+    typeof timestamp === "number"
+      ? new Date(timestamp > 9999999999 ? timestamp : timestamp * 1000).toISOString()
+      : timestamp;
 
   return {
     ...rawPayload,
@@ -152,7 +155,9 @@ function normalizeInboundPayload(rawPayload: any): N8nInboundPayload {
       name: rawPayload?.contact?.name ?? pushName ?? undefined,
       display_name: rawPayload?.contact?.display_name ?? pushName ?? undefined,
       pushName: rawPayload?.contact?.pushName ?? pushName ?? undefined,
-      lid: rawPayload?.contact?.lid ?? (String(remoteJid ?? "").endsWith("@lid") ? remoteJid : undefined),
+      lid:
+        rawPayload?.contact?.lid ??
+        (String(remoteJid ?? "").endsWith("@lid") ? remoteJid : undefined),
     },
     conversation: {
       ...(rawPayload?.conversation ?? {}),
@@ -164,9 +169,14 @@ function normalizeInboundPayload(rawPayload: any): N8nInboundPayload {
       direction: rawPayload?.message?.direction ?? (fromMe ? "outbound" : "inbound"),
       sender_type: rawPayload?.message?.sender_type ?? (fromMe ? "human" : "client"),
       body: rawPayload?.message?.body ?? readBody(rawMessage),
-      transcript: readTranscript(rawPayload?.message, rawPayload?.message?.raw ?? data, rawPayload?.message?.media),
+      transcript: readTranscript(
+        rawPayload?.message,
+        rawPayload?.message?.raw ?? data,
+        rawPayload?.message?.media,
+      ),
       message_type: rawPayload?.message?.message_type ?? (data?.messageType || "text"),
-      provider_message_id: rawPayload?.message?.provider_message_id ?? key?.id ?? data?.id ?? undefined,
+      provider_message_id:
+        rawPayload?.message?.provider_message_id ?? key?.id ?? data?.id ?? undefined,
       created_at: createdAt ?? rawPayload?.message?.created_at,
       raw: { ...(rawPayload?.message?.raw ?? {}), ...data, remote_jid: remoteJid, key },
     },
@@ -199,9 +209,7 @@ export async function handleN8nInboundPayloadAdmin(
   const messageCreatedAt = payload.message.created_at ?? nowIso;
   const provider = (payload.meta as any)?.provider ?? "evolution";
   const providerInstance =
-    (payload.meta as any)?.provider_instance ??
-    (payload.meta as any)?.instance ??
-    "gs-gesso";
+    (payload.meta as any)?.provider_instance ?? (payload.meta as any)?.instance ?? "gs-gesso";
   const remoteJid =
     payload.conversation?.remote_jid ??
     payload.conversation?.external_id ??
@@ -212,7 +220,8 @@ export async function handleN8nInboundPayloadAdmin(
     (payload.contact.phone ? `${payload.contact.phone}@s.whatsapp.net` : null);
   if (!remoteJid) throw new Error("conversation.remote_jid or contact.phone required");
   const digits = (value: string | null | undefined) => (value ?? "").replace(/\D/g, "");
-  const rawRemoteJid = (payload.message.raw as any)?.key?.remoteJid ?? (payload.message.raw as any)?.remoteJid ?? null;
+  const rawRemoteJid =
+    (payload.message.raw as any)?.key?.remoteJid ?? (payload.message.raw as any)?.remoteJid ?? null;
   const remoteJidAlt =
     (payload.message.raw as any)?.key?.remoteJidAlt ??
     (payload.message.raw as any)?.remoteJidAlt ??
@@ -230,7 +239,12 @@ export async function handleN8nInboundPayloadAdmin(
   if (!phone) throw new Error("phone or digits(remote_jid) required");
   const lidJid = isLidJid(remoteJid)
     ? remoteJid
-    : (isLidJid(rawRemoteJid) ? rawRemoteJid : ((payload.meta as any)?.lid_jid ?? (payload.contact as any).lid ?? (payload.message.raw as any)?.lid_jid ?? null));
+    : isLidJid(rawRemoteJid)
+      ? rawRemoteJid
+      : ((payload.meta as any)?.lid_jid ??
+        (payload.contact as any).lid ??
+        (payload.message.raw as any)?.lid_jid ??
+        null);
   const displayName =
     payload.contact.display_name ??
     payload.contact.pushName ??
@@ -246,7 +260,8 @@ export async function handleN8nInboundPayloadAdmin(
     pushName: displayName,
   };
   const contactContext = {
-    interest: (payload.contact as any).interest ?? (payload.ai as any)?.collected_fields?.interest ?? null,
+    interest:
+      (payload.contact as any).interest ?? (payload.ai as any)?.collected_fields?.interest ?? null,
     notes: (payload.contact as any).notes ?? (payload.ai as any)?.notes ?? null,
     next_action: (payload.contact as any).next_action ?? (payload.ai as any)?.next_action ?? null,
   };
@@ -353,12 +368,14 @@ export async function handleN8nInboundPayloadAdmin(
     if (error) throw error;
     contact = data;
   } else {
-    const existingAliases: string[] = Array.isArray(contact.raw?.phone_aliases) ? contact.raw.phone_aliases : [];
+    const existingAliases: string[] = Array.isArray(contact.raw?.phone_aliases)
+      ? contact.raw.phone_aliases
+      : [];
     const aliasSet = new Set(existingAliases);
     if (matchedByPhoneFallback && phone && phone !== contact.phone) aliasSet.add(phone);
     const patch: any = {
       // Em phone fallback NÃO sobrescreve phone (jids @lid vs @s.whatsapp.net geram phones diferentes do mesmo cliente)
-      phone: matchedByPhoneFallback ? contact.phone : (phone || contact.phone),
+      phone: matchedByPhoneFallback ? contact.phone : phone || contact.phone,
       name: payload.contact.name ?? contact.name ?? displayName,
       display_name: displayName ?? contact.display_name,
       source: payload.contact.source ?? contact.source,
@@ -396,8 +413,7 @@ export async function handleN8nInboundPayloadAdmin(
   const aiFields = {
     intent: payload.ai?.intent ?? null,
     funnel_stage: payload.ai?.stage ?? null,
-    ai_confidence:
-      typeof payload.ai?.confidence === "number" ? payload.ai.confidence : null,
+    ai_confidence: typeof payload.ai?.confidence === "number" ? payload.ai.confidence : null,
     last_ai_action: payload.ai?.last_action ?? payload.ai?.mode ?? null,
     ai_last_decision: (payload.ai?.decision ?? payload.ai ?? null) as any,
     ai_draft_reply: payload.ai?.draft_reply ?? payload.ai?.reply_body ?? null,
@@ -418,9 +434,7 @@ export async function handleN8nInboundPayloadAdmin(
         ai_enabled: payload.conversation?.ai_enabled ?? true,
         needs_human: payload.conversation?.needs_human ?? false,
         needs_human_reason:
-          payload.conversation?.needs_human_reason ??
-          (payload.ai as any)?.handoff_reason ??
-          null,
+          payload.conversation?.needs_human_reason ?? (payload.ai as any)?.handoff_reason ?? null,
         last_message_at: messageCreatedAt,
         last_inbound_at: isInbound ? messageCreatedAt : null,
         last_outbound_at: !isInbound ? messageCreatedAt : null,
@@ -438,7 +452,8 @@ export async function handleN8nInboundPayloadAdmin(
       ? (conversation.raw as any).jid_aliases
       : [];
     const jidAliasSet = new Set(existingJidAliases);
-    if (matchedByPhoneFallback && remoteJid && remoteJid !== conversation.remote_jid) jidAliasSet.add(remoteJid);
+    if (matchedByPhoneFallback && remoteJid && remoteJid !== conversation.remote_jid)
+      jidAliasSet.add(remoteJid);
     const effectiveRemoteJid = matchedByPhoneFallback ? conversation.remote_jid : remoteJid;
     const { data, error } = await supabaseAdmin
       .from("gs_whatsapp_conversations")
@@ -447,10 +462,8 @@ export async function handleN8nInboundPayloadAdmin(
         provider_instance: providerInstance,
         remote_jid: effectiveRemoteJid,
         status: payload.conversation?.status ?? conversation.status,
-        ai_enabled:
-          payload.conversation?.ai_enabled ?? conversation.ai_enabled,
-        needs_human:
-          payload.conversation?.needs_human ?? conversation.needs_human,
+        ai_enabled: payload.conversation?.ai_enabled ?? conversation.ai_enabled,
+        needs_human: payload.conversation?.needs_human ?? conversation.needs_human,
         needs_human_reason:
           payload.conversation?.needs_human_reason ??
           (payload.ai as any)?.handoff_reason ??
@@ -463,8 +476,7 @@ export async function handleN8nInboundPayloadAdmin(
         funnel_stage: aiFields.funnel_stage ?? conversation.funnel_stage,
         ai_confidence: aiFields.ai_confidence ?? conversation.ai_confidence,
         last_ai_action: aiFields.last_ai_action ?? conversation.last_ai_action,
-        ai_last_decision:
-          aiFields.ai_last_decision ?? conversation.ai_last_decision,
+        ai_last_decision: aiFields.ai_last_decision ?? conversation.ai_last_decision,
         ai_draft_reply: aiFields.ai_draft_reply ?? conversation.ai_draft_reply,
         raw: {
           ...((conversation.raw as any) ?? {}),
@@ -473,9 +485,7 @@ export async function handleN8nInboundPayloadAdmin(
           lid_jid: lidJid ?? (conversation.raw as any)?.lid_jid,
           jid_aliases: Array.from(jidAliasSet),
         } as any,
-        unread_count: isInbound
-          ? (conversation.unread_count ?? 0) + 1
-          : conversation.unread_count,
+        unread_count: isInbound ? (conversation.unread_count ?? 0) + 1 : conversation.unread_count,
       })
       .eq("id", conversation.id)
       .select("*")
@@ -513,10 +523,7 @@ export async function handleN8nInboundPayloadAdmin(
       payload.message.message_type ??
       (audioMsg || audioUrl ? "audio" : "text");
     const providerStatus =
-      part.provider_status ??
-      (payload.message as any).provider_status ??
-      partRaw?.status ??
-      null;
+      part.provider_status ?? (payload.message as any).provider_status ?? partRaw?.status ?? null;
     const messageRow: any = {
       conversation_id: conversation.id,
       contact_id: contact.id,
@@ -525,7 +532,10 @@ export async function handleN8nInboundPayloadAdmin(
       body: part.body ?? part.text ?? payload.message.body ?? null,
       message_type: messageType,
       audio_url: audioUrl,
-      transcript: readTranscript(part, partRaw, mediaCandidate) ?? readTranscript(payload.message, payload.message.raw, (payload.message as any).media) ?? null,
+      transcript:
+        readTranscript(part, partRaw, mediaCandidate) ??
+        readTranscript(payload.message, payload.message.raw, (payload.message as any).media) ??
+        null,
       media: mediaCandidate ?? {},
       provider_status: providerStatus,
       provider_message_id:
@@ -569,10 +579,18 @@ export async function handleN8nInboundPayloadAdmin(
       if (existingMessageError) throw existingMessageError;
       if (existingMessage) {
         messageRow.body = hasText(messageRow.body) ? messageRow.body : existingMessage.body;
-        messageRow.transcript = hasText(messageRow.transcript) ? messageRow.transcript : existingMessage.transcript;
+        messageRow.transcript = hasText(messageRow.transcript)
+          ? messageRow.transcript
+          : existingMessage.transcript;
         messageRow.audio_url = messageRow.audio_url ?? existingMessage.audio_url;
-        messageRow.media = { ...((existingMessage.media as any) ?? {}), ...((messageRow.media as any) ?? {}) };
-        messageRow.raw = { ...((existingMessage.raw as any) ?? {}), ...((messageRow.raw as any) ?? {}) };
+        messageRow.media = {
+          ...((existingMessage.media as any) ?? {}),
+          ...((messageRow.media as any) ?? {}),
+        };
+        messageRow.raw = {
+          ...((existingMessage.raw as any) ?? {}),
+          ...((messageRow.raw as any) ?? {}),
+        };
       }
       const { data, error } = await supabaseAdmin
         .from("gs_whatsapp_messages")
@@ -612,10 +630,7 @@ export async function handleN8nInboundPayloadAdmin(
     events.push({
       event_type: "handoff_requested",
       payload: {
-        reason:
-          payload.conversation.needs_human_reason ??
-          (payload.ai as any)?.reason ??
-          null,
+        reason: payload.conversation.needs_human_reason ?? (payload.ai as any)?.reason ?? null,
       },
     });
   }
