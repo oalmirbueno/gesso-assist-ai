@@ -93,16 +93,22 @@ function normalizeInboundPayload(rawPayload: any): N8nInboundPayload {
   const remoteJid =
     rawPayload?.conversation?.remote_jid ??
     rawPayload?.conversation?.external_id ??
+    rawPayload?.message?.remote_jid ??
+    rawPayload?.message?.remoteJid ??
     rawPayload?.remote_jid ??
     rawPayload?.remoteJid ??
     rawPayload?.jid ??
     rawPayload?.meta?.remote_jid ??
     rawPayload?.meta?.jid ??
-    rawPayload?.message?.remote_jid ??
-    rawPayload?.message?.remoteJid ??
+    rawPayload?.message?.raw?.remote_jid ??
+    rawPayload?.message?.raw?.remoteJid ??
+    rawPayload?.message?.raw?.key?.remoteJidAlt ??
     rawPayload?.message?.key?.remoteJid ??
     rawMessage?.raw?.remote_jid ??
+    rawMessage?.raw?.remoteJid ??
+    rawMessage?.raw?.key?.remoteJidAlt ??
     rawMessage?.raw?.key?.remoteJid ??
+    key?.remoteJidAlt ??
     data?.remoteJid ??
     key?.remoteJid ??
     null;
@@ -158,6 +164,7 @@ function normalizeInboundPayload(rawPayload: any): N8nInboundPayload {
       direction: rawPayload?.message?.direction ?? (fromMe ? "outbound" : "inbound"),
       sender_type: rawPayload?.message?.sender_type ?? (fromMe ? "human" : "client"),
       body: rawPayload?.message?.body ?? readBody(rawMessage),
+      transcript: readTranscript(rawPayload?.message, rawPayload?.message?.raw ?? data, rawPayload?.message?.media),
       message_type: rawPayload?.message?.message_type ?? (data?.messageType || "text"),
       provider_message_id: rawPayload?.message?.provider_message_id ?? key?.id ?? data?.id ?? undefined,
       created_at: createdAt ?? rawPayload?.message?.created_at,
