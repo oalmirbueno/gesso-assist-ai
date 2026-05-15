@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as WhatsappRouteImport } from './routes/whatsapp'
 import { Route as UsuariosRouteImport } from './routes/usuarios'
 import { Route as ObjecoesRouteImport } from './routes/objecoes'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as InboxRouteImport } from './routes/inbox'
 import { Route as DevWebhookRouteImport } from './routes/dev-webhook'
 import { Route as CrmRouteImport } from './routes/crm'
@@ -36,6 +37,11 @@ const UsuariosRoute = UsuariosRouteImport.update({
 const ObjecoesRoute = ObjecoesRouteImport.update({
   id: '/objecoes',
   path: '/objecoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InboxRoute = InboxRouteImport.update({
@@ -98,6 +104,7 @@ export interface FileRoutesByFullPath {
   '/crm': typeof CrmRoute
   '/dev-webhook': typeof DevWebhookRoute
   '/inbox': typeof InboxRoute
+  '/login': typeof LoginRoute
   '/objecoes': typeof ObjecoesRoute
   '/usuarios': typeof UsuariosRoute
   '/whatsapp': typeof WhatsappRoute
@@ -113,6 +120,7 @@ export interface FileRoutesByTo {
   '/crm': typeof CrmRoute
   '/dev-webhook': typeof DevWebhookRoute
   '/inbox': typeof InboxRoute
+  '/login': typeof LoginRoute
   '/objecoes': typeof ObjecoesRoute
   '/usuarios': typeof UsuariosRoute
   '/whatsapp': typeof WhatsappRoute
@@ -129,6 +137,7 @@ export interface FileRoutesById {
   '/crm': typeof CrmRoute
   '/dev-webhook': typeof DevWebhookRoute
   '/inbox': typeof InboxRoute
+  '/login': typeof LoginRoute
   '/objecoes': typeof ObjecoesRoute
   '/usuarios': typeof UsuariosRoute
   '/whatsapp': typeof WhatsappRoute
@@ -146,6 +155,7 @@ export interface FileRouteTypes {
     | '/crm'
     | '/dev-webhook'
     | '/inbox'
+    | '/login'
     | '/objecoes'
     | '/usuarios'
     | '/whatsapp'
@@ -161,6 +171,7 @@ export interface FileRouteTypes {
     | '/crm'
     | '/dev-webhook'
     | '/inbox'
+    | '/login'
     | '/objecoes'
     | '/usuarios'
     | '/whatsapp'
@@ -176,6 +187,7 @@ export interface FileRouteTypes {
     | '/crm'
     | '/dev-webhook'
     | '/inbox'
+    | '/login'
     | '/objecoes'
     | '/usuarios'
     | '/whatsapp'
@@ -192,6 +204,7 @@ export interface RootRouteChildren {
   CrmRoute: typeof CrmRoute
   DevWebhookRoute: typeof DevWebhookRoute
   InboxRoute: typeof InboxRoute
+  LoginRoute: typeof LoginRoute
   ObjecoesRoute: typeof ObjecoesRoute
   UsuariosRoute: typeof UsuariosRoute
   WhatsappRoute: typeof WhatsappRoute
@@ -221,6 +234,13 @@ declare module '@tanstack/react-router' {
       path: '/objecoes'
       fullPath: '/objecoes'
       preLoaderRoute: typeof ObjecoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/inbox': {
@@ -304,6 +324,7 @@ const rootRouteChildren: RootRouteChildren = {
   CrmRoute: CrmRoute,
   DevWebhookRoute: DevWebhookRoute,
   InboxRoute: InboxRoute,
+  LoginRoute: LoginRoute,
   ObjecoesRoute: ObjecoesRoute,
   UsuariosRoute: UsuariosRoute,
   WhatsappRoute: WhatsappRoute,
@@ -314,3 +335,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
