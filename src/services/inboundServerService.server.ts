@@ -239,7 +239,7 @@ export async function handleN8nInboundPayloadAdmin(
           (payload.meta as any)?.remote_jid ??
           payload.contact?.phone,
       });
-      return { success: true, contact_id: null as any, conversation_id: null as any, message_id: null as any };
+      throw new Error("empty_message");
     }
   }
   if (payload.event_type === "evolution_history_backfill" && !payload.message.provider_message_id) {
@@ -287,6 +287,7 @@ export async function handleN8nInboundPayloadAdmin(
         (payload.message.raw as any)?.lid_jid ??
         null);
   const canonicalRemoteJid = preferredPhoneJid ?? remoteJid;
+  const externalId = payload.conversation?.external_id ?? canonicalRemoteJid;
   const displayName =
     payload.contact.display_name ??
     payload.contact.pushName ??
@@ -336,6 +337,16 @@ export async function handleN8nInboundPayloadAdmin(
       .maybeSingle();
     if (error) throw error;
     byJid = byPreferredJid;
+  }
+  if (!byJid && externalId) {
+    const { data: byExternalId, error } = await supabaseAdmin
+      .from("gs_whatsapp_conversations")
+      .select("*")
+      .eq("provider_instance", providerInstance)
+      .eq("external_id" as any, externalId)
+      .maybeSingle();
+    if (error) throw error;
+    byJid = byExternalId;
   }
   if (!byJid) {
     const { data: byRawLid, error } = await supabaseAdmin
@@ -472,6 +483,7 @@ export async function handleN8nInboundPayloadAdmin(
         provider,
         provider_instance: providerInstance,
         remote_jid: remoteJid,
+        external_id: externalId,
         status: payload.conversation?.status ?? "nova",
         ai_enabled: payload.conversation?.ai_enabled ?? true,
         needs_human: payload.conversation?.needs_human ?? false,
@@ -483,7 +495,7 @@ export async function handleN8nInboundPayloadAdmin(
         summary: (payload.ai as any)?.summary ?? null,
         raw: { ...(payload as any), remote_jid: canonicalRemoteJid, lid_jid: lidJid } as any,
         ...aiFields,
-      })
+      } as any)
       .select("*")
       .single();
     if (error) throw error;
@@ -505,6 +517,7 @@ export async function handleN8nInboundPayloadAdmin(
         contact_id: contact.id,
         provider_instance: providerInstance,
         remote_jid: effectiveRemoteJid,
+        external_id: externalId ?? (conversation as any).external_id,
         status: payload.conversation?.status ?? conversation.status,
         ai_enabled: payload.conversation?.ai_enabled ?? conversation.ai_enabled,
         needs_human: payload.conversation?.needs_human ?? conversation.needs_human,
@@ -530,7 +543,7 @@ export async function handleN8nInboundPayloadAdmin(
           jid_aliases: Array.from(jidAliasSet),
         } as any,
         unread_count: isInbound ? (conversation.unread_count ?? 0) + 1 : conversation.unread_count,
-      })
+      } as any)
       .eq("id", conversation.id)
       .select("*")
       .single();
@@ -539,7 +552,7 @@ export async function handleN8nInboundPayloadAdmin(
   }
 
   // 3) Message (idempotent on provider_message_id when present)
-  const parts = normalizeMessageParts(payload.message) ?? [{ body: payload.message.body }];
+  const parts = normalizeMessageParts(payload.message) ?? [payload.message];
   const insertedMessageIds: string[] = [];
   for (let index = 0; index < parts.length; index += 1) {
     const part = parts[index] as any;
@@ -654,6 +667,7 @@ export async function handleN8nInboundPayloadAdmin(
     }
   }
   const messageId = insertedMessageIds[0];
+  if (!messageId) throw new Error("empty_message");
 
   // 4) Events
   const events: Array<{ event_type: string; payload: any }> = [
