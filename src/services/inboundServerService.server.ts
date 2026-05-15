@@ -245,6 +245,7 @@ export async function handleN8nInboundPayloadAdmin(
         (payload.contact as any).lid ??
         (payload.message.raw as any)?.lid_jid ??
         null);
+  const canonicalRemoteJid = preferredPhoneJid ?? remoteJid;
   const displayName =
     payload.contact.display_name ??
     payload.contact.pushName ??
@@ -255,7 +256,7 @@ export async function handleN8nInboundPayloadAdmin(
     null;
   const contactRaw = {
     ...(payload.contact as any),
-    remote_jid: remoteJid,
+          remote_jid: canonicalRemoteJid,
     lid_jid: lidJid,
     pushName: displayName,
   };
@@ -439,7 +440,7 @@ export async function handleN8nInboundPayloadAdmin(
         last_inbound_at: isInbound ? messageCreatedAt : null,
         last_outbound_at: !isInbound ? messageCreatedAt : null,
         summary: (payload.ai as any)?.summary ?? null,
-        raw: { ...(payload as any), remote_jid: remoteJid, lid_jid: lidJid } as any,
+        raw: { ...(payload as any), remote_jid: canonicalRemoteJid, lid_jid: lidJid } as any,
         ...aiFields,
       })
       .select("*")
@@ -454,7 +455,9 @@ export async function handleN8nInboundPayloadAdmin(
     const jidAliasSet = new Set(existingJidAliases);
     if (matchedByPhoneFallback && remoteJid && remoteJid !== conversation.remote_jid)
       jidAliasSet.add(remoteJid);
-    const effectiveRemoteJid = matchedByPhoneFallback ? conversation.remote_jid : remoteJid;
+    const effectiveRemoteJid = matchedByPhoneFallback
+      ? conversation.remote_jid
+      : canonicalRemoteJid;
     const { data, error } = await supabaseAdmin
       .from("gs_whatsapp_conversations")
       .update({
