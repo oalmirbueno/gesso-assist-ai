@@ -55,13 +55,34 @@ export async function handleN8nInboundPayloadAdmin(
   };
 
   // 1) Conversation lookup by operational key before deciding which contact to update.
-  const { data: byJid, error: byJidErr } = await supabaseAdmin
+  const { data: byJidRow, error: byJidErr } = await supabaseAdmin
     .from("gs_whatsapp_conversations")
     .select("*")
     .eq("provider_instance", providerInstance)
     .eq("remote_jid", remoteJid)
     .maybeSingle();
   if (byJidErr) throw byJidErr;
+  let byJid = byJidRow;
+  if (!byJid && lidJid && lidJid !== remoteJid) {
+    const { data: byLid, error } = await supabaseAdmin
+      .from("gs_whatsapp_conversations")
+      .select("*")
+      .eq("provider_instance", providerInstance)
+      .eq("remote_jid", lidJid)
+      .maybeSingle();
+    if (error) throw error;
+    byJid = byLid;
+  }
+  if (!byJid) {
+    const { data: byRawLid, error } = await supabaseAdmin
+      .from("gs_whatsapp_conversations")
+      .select("*")
+      .eq("provider_instance", providerInstance)
+      .filter("raw->>lid_jid", "eq", remoteJid)
+      .maybeSingle();
+    if (error) throw error;
+    byJid = byRawLid;
+  }
 
   let contact: any = null;
   if (byJid?.contact_id) {
@@ -162,7 +183,7 @@ export async function handleN8nInboundPayloadAdmin(
         last_inbound_at: isInbound ? messageCreatedAt : null,
         last_outbound_at: !isInbound ? messageCreatedAt : null,
         summary: (payload.ai as any)?.summary ?? null,
-        raw: payload as any,
+        raw: { ...(payload as any), remote_jid: remoteJid, lid_jid: lidJid } as any,
         ...aiFields,
       })
       .select("*")
@@ -174,6 +195,8 @@ export async function handleN8nInboundPayloadAdmin(
       .from("gs_whatsapp_conversations")
       .update({
         contact_id: contact.id,
+        provider_instance: providerInstance,
+        remote_jid: remoteJid,
         status: payload.conversation?.status ?? conversation.status,
         ai_enabled:
           payload.conversation?.ai_enabled ?? conversation.ai_enabled,
@@ -194,6 +217,7 @@ export async function handleN8nInboundPayloadAdmin(
         ai_last_decision:
           aiFields.ai_last_decision ?? conversation.ai_last_decision,
         ai_draft_reply: aiFields.ai_draft_reply ?? conversation.ai_draft_reply,
+        raw: { ...((conversation.raw as any) ?? {}), ...(payload as any), remote_jid: remoteJid, lid_jid: lidJid } as any,
         unread_count: isInbound
           ? (conversation.unread_count ?? 0) + 1
           : conversation.unread_count,
