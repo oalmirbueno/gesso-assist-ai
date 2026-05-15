@@ -352,8 +352,15 @@ function NoConversationSelected() {
 }
 
 /* ============== CONVERSATION VIEW ============== */
-function ConversationView({ conv, sellers }: { conv: GsConversation; sellers: GsSeller[] }) {
-  const messages = useGsMessages(conv.id);
+function ConversationView({
+  conv,
+  sellers,
+  messages,
+}: {
+  conv: GsConversation;
+  sellers: GsSeller[];
+  messages: GsMessage[];
+}) {
   const events = useGsEvents(conv.id);
   const [draft, setDraft] = useState("");
   const [aiDraft, setAiDraft] = useState<{ text: string; pending: boolean } | null>(null);
@@ -438,7 +445,7 @@ function ConversationView({ conv, sellers }: { conv: GsConversation; sellers: Gs
   const currentSeller = sellers.find((s) => s.id === conv.current_seller_id);
 
   const initials =
-    (conv.contact?.name ?? conv.contact?.phone ?? "?")
+    (conv.contact?.display_name ?? conv.contact?.name ?? conv.contact?.phone ?? conv.remote_jid ?? "?")
       .replace(/[^A-Za-zÀ-ÿ0-9 ]/g, "")
       .trim()
       .split(/\s+/)
@@ -455,9 +462,10 @@ function ConversationView({ conv, sellers }: { conv: GsConversation; sellers: Gs
             {initials}
           </div>
           <div className="min-w-0">
-            <div className="font-semibold text-sm truncate">{conv.contact?.name ?? conv.contact?.phone}</div>
+            <div className="font-semibold text-sm truncate">{conv.contact?.display_name ?? conv.contact?.name ?? conv.contact?.phone ?? conv.remote_jid}</div>
             <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground truncate">
               <span>{conv.contact?.phone}</span>
+              {conv.remote_jid && <><span>·</span><span className="font-mono">{conv.remote_jid}</span></>}
               {conv.intent && <><span>·</span><span>intenção: <span className="text-foreground">{conv.intent}</span></span></>}
               {conv.ai_confidence != null && <span>· {Math.round(conv.ai_confidence * 100)}%</span>}
               {conv.funnel_stage && <><span>·</span><span>{FUNNEL_LABELS[conv.funnel_stage] ?? conv.funnel_stage}</span></>}
