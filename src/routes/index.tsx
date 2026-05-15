@@ -65,7 +65,7 @@ function Dashboard() {
       leadsQuentes: list.filter((c) => c.intent === "compra_quente" || c.needs_human).length,
       iaAtiva: list.filter((c) => c.ai_enabled).length,
     });
-    setEvents(evts.filter(isProductionWhatsappEvent));
+    setEvents(evts.filter(isProductionWhatsappEvent).slice(0, 8));
   }
 
   async function load() {
@@ -77,7 +77,7 @@ function Dashboard() {
         .from("gs_whatsapp_events")
         .select("id,event_type,created_at,payload")
         .order("created_at", { ascending: false })
-        .limit(8),
+        .limit(50),
     ]);
 
     commit((convs.data ?? []) as any[], (evts.data as RecentEvent[]) ?? []);
