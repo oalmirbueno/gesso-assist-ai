@@ -112,26 +112,26 @@ function DevWebhook() {
 
   return (
     <AppShell title="Dev Webhook Tester">
-      <div className="p-6 space-y-4 max-w-5xl">
+      <div className="p-6 lg:p-8 space-y-6 w-full max-w-[1600px] mx-auto">
         {needsLogin && <AuthPanel />}
 
-        <Card className="p-4 space-y-3">
-          <div className="flex items-center justify-between gap-2 flex-wrap">
-            <div>
-              <p className="text-sm font-medium">Simular payload do n8n</p>
-              <p className="text-xs text-muted-foreground">
+        <Card className="p-6 space-y-5">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
+            <div className="space-y-1.5 min-w-0 flex-1">
+              <p className="text-base font-semibold">Simular payload do n8n</p>
+              <p className="text-sm text-muted-foreground">
                 Endpoint real:{" "}
-                <code className="bg-muted px-1.5 py-0.5 rounded">
+                <code className="bg-muted px-2 py-1 rounded text-xs break-all">
                   POST /api/public/n8n/inbound-whatsapp
                 </code>
               </p>
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p className="text-sm text-muted-foreground">
                 {isAuthenticated
                   ? `Logado como ${user?.email}`
-                  : "Faça login para testar o webhook via service. O endpoint /api/public roda no backend."}
+                  : "Faça login para testar via service. O endpoint /api/public roda no backend."}
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap shrink-0">
               <Button
                 size="sm"
                 variant={mode === "client" ? "default" : "outline"}
