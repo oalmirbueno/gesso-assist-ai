@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Phone, MapPin, Search, Plus, Loader2, Inbox } from "lucide-react";
 import { toast } from "sonner";
+import { isProductionWhatsappContact } from "@/lib/whatsappProduction";
 
 export const Route = createFileRoute("/crm")({
   component: CRM,
@@ -25,6 +26,7 @@ type GsContact = {
   next_action: string | null;
   notes: string | null;
   updated_at: string;
+  display_name?: string | null;
 };
 
 const STAGES: { id: string; label: string; accent: string }[] = [
@@ -46,11 +48,11 @@ function CRM() {
     setLoading(true);
     const { data, error } = await supabase
       .from("gs_whatsapp_contacts")
-      .select("id,name,phone,city,neighborhood,interest,stage,tags,next_action,notes,updated_at")
+      .select("id,name,display_name,phone,city,neighborhood,interest,stage,tags,next_action,notes,updated_at")
       .order("updated_at", { ascending: false })
       .limit(500);
     if (error) toast.error("Falha ao carregar CRM");
-    setRows((data as GsContact[]) ?? []);
+    setRows(((data as GsContact[]) ?? []).filter(isProductionWhatsappContact));
     setLoading(false);
   }
 
