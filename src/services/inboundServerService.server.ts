@@ -270,6 +270,16 @@ export async function handleN8nInboundPayloadAdmin(
     if (error) throw error;
     byJid = byLid;
   }
+  if (!byJid && !isClientWhatsappJid(remoteJid) && preferredPhoneJid) {
+    const { data: byPreferredJid, error } = await supabaseAdmin
+      .from("gs_whatsapp_conversations")
+      .select("*")
+      .eq("provider_instance", providerInstance)
+      .eq("remote_jid", preferredPhoneJid)
+      .maybeSingle();
+    if (error) throw error;
+    byJid = byPreferredJid;
+  }
   if (!byJid) {
     const { data: byRawLid, error } = await supabaseAdmin
       .from("gs_whatsapp_conversations")
