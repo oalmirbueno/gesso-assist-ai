@@ -171,14 +171,21 @@ export function useGsDiagnostics() {
     const [conversationResult, messageResult] = await Promise.all([
       supabase
         .from("gs_whatsapp_conversations" as any)
-        .select("id"),
+        .select("id, remote_jid, contact:gs_whatsapp_contacts(name, display_name, phone)"),
       supabase
         .from("gs_whatsapp_messages" as any)
-        .select("id"),
+        .select("id, provider_message_id, body, conversation:gs_whatsapp_conversations(remote_jid, contact:gs_whatsapp_contacts(name, display_name, phone))"),
     ]);
+    const conversations = ((conversationResult.data ?? []) as any[]).filter(isProductionWhatsappConversation);
+    const messages = ((messageResult.data ?? []) as any[]).filter((m) =>
+      isProductionWhatsappConversation({
+        remote_jid: m.conversation?.remote_jid,
+        contact: m.conversation?.contact,
+      }) && !isKnownWhatsappTestRecord(m),
+    );
     setCounts({
-      conversations: conversationResult.data?.length ?? 0,
-      messages: messageResult.data?.length ?? 0,
+      conversations: conversations.length,
+      messages: messages.length,
     });
   }, []);
 
