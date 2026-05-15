@@ -167,6 +167,9 @@ export function useGsMessages(conversationId: string | null) {
         },
         (p) =>
           setMessages((current) => {
+            if (p.eventType === "DELETE") {
+              return current.filter((m) => m.id !== (p.old as any).id);
+            }
             const next = current.some((m) => m.id === (p.new as any).id)
               ? current.map((m) => (m.id === (p.new as any).id ? (p.new as any) : m))
               : [...current, p.new as any];
