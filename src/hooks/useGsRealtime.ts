@@ -98,7 +98,7 @@ export function useGsConversations() {
   useEffect(() => {
     load();
     const ch = supabase
-      .channel("gs-inbox")
+      .channel(`gs-inbox-${Date.now()}-${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "gs_whatsapp_conversations" }, load)
       .on("postgres_changes", { event: "*", schema: "public", table: "gs_whatsapp_contacts" }, load)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "gs_whatsapp_messages" }, load)
@@ -161,7 +161,7 @@ export function useGsMessages(conversationId: string | null) {
   return messages;
 }
 
-export function useGsDiagnostics(selectedConversationId: string | null) {
+export function useGsDiagnostics() {
   const [counts, setCounts] = useState({ conversations: 0, messages: 0 });
 
   const reload = useCallback(async () => {
@@ -182,14 +182,14 @@ export function useGsDiagnostics(selectedConversationId: string | null) {
   useEffect(() => {
     reload();
     const ch = supabase
-      .channel("gs-diagnostics")
+      .channel(`gs-diagnostics-${Date.now()}-${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "gs_whatsapp_conversations" }, reload)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "gs_whatsapp_messages" }, reload)
       .subscribe();
     return () => {
       supabase.removeChannel(ch);
     };
-  }, [reload, selectedConversationId]);
+  }, [reload]);
 
   return counts;
 }
