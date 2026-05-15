@@ -212,12 +212,25 @@ export async function handleN8nInboundPayloadAdmin(
     (payload.contact.phone ? `${payload.contact.phone}@s.whatsapp.net` : null);
   if (!remoteJid) throw new Error("conversation.remote_jid or contact.phone required");
   const digits = (value: string | null | undefined) => (value ?? "").replace(/\D/g, "");
-  const fallbackPhone = digits(remoteJid);
+  const rawRemoteJid = (payload.message.raw as any)?.key?.remoteJid ?? (payload.message.raw as any)?.remoteJid ?? null;
+  const remoteJidAlt =
+    (payload.message.raw as any)?.key?.remoteJidAlt ??
+    (payload.message.raw as any)?.remoteJidAlt ??
+    (payload.meta as any)?.remote_jid_alt ??
+    null;
+  const preferredPhoneJid = isClientWhatsappJid(remoteJid)
+    ? remoteJid
+    : isClientWhatsappJid(remoteJidAlt)
+      ? remoteJidAlt
+      : isClientWhatsappJid(rawRemoteJid)
+        ? rawRemoteJid
+        : null;
+  const fallbackPhone = digits(preferredPhoneJid ?? remoteJid);
   const phone = digits(payload.contact.phone) || fallbackPhone;
   if (!phone) throw new Error("phone or digits(remote_jid) required");
-  const lidJid = remoteJid.endsWith("@lid")
+  const lidJid = isLidJid(remoteJid)
     ? remoteJid
-    : ((payload.meta as any)?.lid_jid ?? (payload.contact as any).lid ?? (payload.message.raw as any)?.lid_jid ?? null);
+    : (isLidJid(rawRemoteJid) ? rawRemoteJid : ((payload.meta as any)?.lid_jid ?? (payload.contact as any).lid ?? (payload.message.raw as any)?.lid_jid ?? null));
   const displayName =
     payload.contact.display_name ??
     payload.contact.pushName ??
