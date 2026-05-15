@@ -123,6 +123,24 @@ function includesSearch(value: unknown, search: string) {
   return String(value ?? "").toLowerCase().includes(search);
 }
 
+function nonTextLabel(m: GsMessage): string {
+  const t = String(m.message_type || m.raw?.messageType || "").toLowerCase();
+  if (t.includes("contact")) {
+    const name =
+      m.raw?.message?.contactMessage?.displayName ||
+      m.raw?.contactMessage?.displayName ||
+      m.media?.displayName;
+    return name ? `📇 Contato compartilhado: ${name}` : "📇 Contato compartilhado";
+  }
+  if (t.includes("image")) return "📷 Imagem recebida";
+  if (t.includes("video")) return "🎥 Vídeo recebido";
+  if (t.includes("document")) return "📄 Documento recebido";
+  if (t.includes("sticker")) return "💟 Figurinha";
+  if (t.includes("location")) return "📍 Localização compartilhada";
+  if (t.includes("reaction")) return "👍 Reação";
+  return "Mensagem sem texto";
+}
+
 function WhatsAppCockpit() {
   return (
     <AppShell
@@ -231,7 +249,7 @@ function InboxView() {
 
   const selected = conversations.find((c) => c.id === selectedId) ?? null;
   const selectedMessages = useGsMessages(selectedId);
-  const diagnostics = useGsDiagnostics();
+  
 
   useEffect(() => {
     if (filtered.length === 0) {
@@ -245,26 +263,12 @@ function InboxView() {
 
   return (
     <div className="h-full flex flex-col">
-      <GsRealtimeStatus
-        conversationCount={diagnostics.conversations || conversations.length}
-        totalMessageCount={diagnostics.messages}
-        selectedConversationId={selectedId}
-        selectedContactId={selected?.contact_id ?? null}
-        selectedRemoteJid={selected?.remote_jid ?? null}
-        selectedContactPhone={selected?.contact?.phone ?? null}
-        selectedDisplayName={selected ? getGsConversationDisplayName(selected) : null}
-        messageCount={selectedMessages.length}
-        lidConversationCount={diagnostics.lidConversations}
-        backfillEventCount={diagnostics.backfillEvents}
-      />
-      {/* stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 p-4 border-b bg-card/50">
-        <StatCard icon={MessageSquare} label="Conversas ativas" value={stats.ativas} tone="info" />
+      {/* stats minimalistas */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 p-3 border-b bg-card/40">
+        <StatCard icon={MessageSquare} label="Ativas" value={stats.ativas} tone="info" />
         <StatCard icon={AlertTriangle} label="Precisam humano" value={stats.human} tone="warn" />
         <StatCard icon={Bot} label="IA ativa" value={stats.ia} tone="ok" />
-        <StatCard icon={Mic} label="Áudios hoje" value="·" />
-        <StatCard icon={FileText} label="Orçamentos abertos" value={stats.orc} />
-        <StatCard icon={Headphones} label="Vendedores ativos" value={stats.sellersOk} tone="ok" />
+        <StatCard icon={FileText} label="Orçamentos" value={stats.orc} />
       </div>
 
       {/* main 3-pane */}
@@ -311,7 +315,7 @@ function InboxView() {
                         <span className="text-[10px] text-muted-foreground shrink-0">{fmtTime(c.last_message_at)}</span>
                       </div>
                       <div className="text-[11px] text-muted-foreground truncate">
-                        {c.contact?.phone || jidLocalId(c.remote_jid)}{c.remote_jid ? ` · ${c.remote_jid}` : ""}{c.contact?.neighborhood ? ` · ${c.contact.neighborhood}` : ""}
+                        {c.contact?.phone || jidLocalId(c.remote_jid)}{c.contact?.neighborhood ? ` · ${c.contact.neighborhood}` : ""}
                       </div>
                       <div className="flex flex-wrap gap-1 mt-1.5">
                         <Badge variant="outline" className="text-[9px] py-0 h-4">
@@ -520,9 +524,7 @@ function ConversationView({
             <div className="font-semibold text-sm truncate">{displayName}</div>
             <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground truncate">
               <span>{phoneOrJid}</span>
-              {conv.remote_jid && <><span>·</span><span className="font-mono">{conv.remote_jid}</span></>}
-              {conv.intent && <><span>·</span><span>intenção: <span className="text-foreground">{conv.intent}</span></span></>}
-              {conv.ai_confidence != null && <span>· {Math.round(conv.ai_confidence * 100)}%</span>}
+              {conv.intent && <><span>·</span><span>{conv.intent}</span></>}
               {conv.funnel_stage && <><span>·</span><span>{FUNNEL_LABELS[conv.funnel_stage] ?? conv.funnel_stage}</span></>}
             </div>
           </div>
@@ -655,7 +657,12 @@ function ConversationView({
                   {!isAudio && m.transcript && (
                     <div className="text-[11px] italic mb-1 text-foreground/60">🎙 {m.transcript}</div>
                   )}
-                  {m.body && <div className="whitespace-pre-wrap leading-snug">{m.body}</div>}
+                  {!isAudio && m.body && <div className="whitespace-pre-wrap leading-snug">{m.body}</div>}
+                  {!isAudio && !m.body && !m.transcript && (
+                    <div className="text-sm italic text-foreground/70">
+                      {nonTextLabel(m)}
+                    </div>
+                  )}
                   <div className="text-[10px] mt-1 flex items-center gap-1.5 justify-end text-foreground/50">
                     {m.intent && <span>{m.intent}</span>}
                     {m.confidence != null && <span>({Math.round(m.confidence * 100)}%)</span>}
@@ -672,9 +679,8 @@ function ConversationView({
         </div>
       </ScrollArea>
 
-      {/* diagnóstico de mensagens */}
-      <MessageDiagnostics messages={messages} />
-
+      {/* diagnóstico oculto por padrão; visível via "Eventos recentes" */}
+      {showAudit && <MessageDiagnostics messages={messages} />}
       {/* eventos recentes (auditoria) */}
       {showAudit && (
         <div className="border-t bg-card/70 px-4 py-2 max-h-44 overflow-auto shrink-0">
