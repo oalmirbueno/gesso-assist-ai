@@ -639,7 +639,12 @@ function ConversationView({
                   {!isAudio && m.transcript && (
                     <div className="text-[11px] italic mb-1 text-foreground/60">🎙 {m.transcript}</div>
                   )}
-                  {m.body && <div className="whitespace-pre-wrap leading-snug">{m.body}</div>}
+                  {!isAudio && m.body && <div className="whitespace-pre-wrap leading-snug">{m.body}</div>}
+                  {!isAudio && !m.body && !m.transcript && (
+                    <div className="text-sm italic text-foreground/70">
+                      {nonTextLabel(m)}
+                    </div>
+                  )}
                   <div className="text-[10px] mt-1 flex items-center gap-1.5 justify-end text-foreground/50">
                     {m.intent && <span>{m.intent}</span>}
                     {m.confidence != null && <span>({Math.round(m.confidence * 100)}%)</span>}
