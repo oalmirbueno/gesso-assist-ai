@@ -95,7 +95,6 @@ function normalizeInboundPayload(rawPayload: any): N8nInboundPayload {
     rawPayload?.message?.push_name ??
     data?.pushName ??
     null;
-  const fromMe = Boolean(key?.fromMe ?? data?.fromMe ?? rawPayload?.fromMe);
   const timestamp = rawPayload?.message?.created_at ?? data?.messageTimestamp ?? rawPayload?.messageTimestamp;
   const createdAt = typeof timestamp === "number"
     ? new Date(timestamp > 9999999999 ? timestamp : timestamp * 1000).toISOString()
