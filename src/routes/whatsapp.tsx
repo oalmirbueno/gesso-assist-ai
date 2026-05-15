@@ -249,7 +249,7 @@ function InboxView() {
 
   const selected = conversations.find((c) => c.id === selectedId) ?? null;
   const selectedMessages = useGsMessages(selectedId);
-  const diagnostics = useGsDiagnostics();
+  
 
   useEffect(() => {
     if (filtered.length === 0) {
