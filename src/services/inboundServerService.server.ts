@@ -158,9 +158,9 @@ export async function handleN8nInboundPayloadAdmin(
           payload.conversation?.needs_human_reason ??
           (payload.ai as any)?.handoff_reason ??
           null,
-        last_message_at: nowIso,
-        last_inbound_at: isInbound ? nowIso : null,
-        last_outbound_at: !isInbound ? nowIso : null,
+        last_message_at: messageCreatedAt,
+        last_inbound_at: isInbound ? messageCreatedAt : null,
+        last_outbound_at: !isInbound ? messageCreatedAt : null,
         summary: (payload.ai as any)?.summary ?? null,
         raw: payload as any,
         ...aiFields,
@@ -173,6 +173,7 @@ export async function handleN8nInboundPayloadAdmin(
     const { data, error } = await supabaseAdmin
       .from("gs_whatsapp_conversations")
       .update({
+        contact_id: contact.id,
         status: payload.conversation?.status ?? conversation.status,
         ai_enabled:
           payload.conversation?.ai_enabled ?? conversation.ai_enabled,
@@ -182,9 +183,9 @@ export async function handleN8nInboundPayloadAdmin(
           payload.conversation?.needs_human_reason ??
           (payload.ai as any)?.handoff_reason ??
           conversation.needs_human_reason,
-        last_message_at: nowIso,
-        last_inbound_at: isInbound ? nowIso : conversation.last_inbound_at,
-        last_outbound_at: !isInbound ? nowIso : conversation.last_outbound_at,
+        last_message_at: messageCreatedAt,
+        last_inbound_at: isInbound ? messageCreatedAt : conversation.last_inbound_at,
+        last_outbound_at: !isInbound ? messageCreatedAt : conversation.last_outbound_at,
         summary: (payload.ai as any)?.summary ?? conversation.summary,
         intent: aiFields.intent ?? conversation.intent,
         funnel_stage: aiFields.funnel_stage ?? conversation.funnel_stage,
@@ -215,7 +216,8 @@ export async function handleN8nInboundPayloadAdmin(
     audio_url: payload.message.audio_url ?? null,
     transcript: payload.message.transcript ?? null,
     provider_message_id: payload.message.provider_message_id ?? null,
-    raw: (payload.message.raw as any) ?? null,
+    raw: { ...((payload.message.raw as any) ?? {}), remote_jid: remoteJid, lid_jid: lidJid },
+    created_at: messageCreatedAt,
     intent: aiFields.intent,
     confidence: aiFields.ai_confidence,
     needs_human: payload.conversation?.needs_human ?? null,
