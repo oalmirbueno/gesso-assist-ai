@@ -17,6 +17,25 @@ function readBody(rawMessage: any) {
   );
 }
 
+function normalizeMessageParts(message: any) {
+  const candidates =
+    message?.parts ??
+    message?.message_parts ??
+    message?.body_parts ??
+    message?.chunks ??
+    message?.messages ??
+    null;
+  if (!Array.isArray(candidates) || candidates.length === 0) return null;
+  return candidates
+    .map((part: any) => (typeof part === "string" ? { body: part } : part))
+    .filter((part: any) => part && String(part.body ?? part.text ?? "").trim());
+}
+
+function withUniquePartProviderId(base: string | null | undefined, index: number, total: number) {
+  if (!base) return null;
+  return total > 1 ? `${base}_${index + 1}` : base;
+}
+
 function normalizeInboundPayload(rawPayload: any): N8nInboundPayload {
   const data = rawPayload?.data ?? rawPayload?.message?.raw?.data ?? {};
   const key = data?.key ?? rawPayload?.key ?? rawPayload?.message?.raw?.key ?? {};
@@ -142,6 +161,11 @@ export async function handleN8nInboundPayloadAdmin(
     lid_jid: lidJid,
     pushName: displayName,
   };
+  const contactContext = {
+    interest: (payload.contact as any).interest ?? (payload.ai as any)?.collected_fields?.interest ?? null,
+    notes: (payload.contact as any).notes ?? (payload.ai as any)?.notes ?? null,
+    next_action: (payload.contact as any).next_action ?? (payload.ai as any)?.next_action ?? null,
+  };
 
   // 1) Conversation lookup by operational key before deciding which contact to update.
   const { data: byJidRow, error: byJidErr } = await supabaseAdmin
@@ -197,6 +221,9 @@ export async function handleN8nInboundPayloadAdmin(
           tags: (payload.contact.tags as any) ?? [],
           city: payload.contact.city ?? null,
           neighborhood: payload.contact.neighborhood ?? null,
+          interest: contactContext.interest,
+          notes: contactContext.notes,
+          next_action: contactContext.next_action,
           last_message_at: messageCreatedAt,
           raw: contactRaw as any,
         },
@@ -216,6 +243,9 @@ export async function handleN8nInboundPayloadAdmin(
       tags: (payload.contact.tags as any) ?? contact.tags,
       city: payload.contact.city ?? contact.city,
       neighborhood: payload.contact.neighborhood ?? contact.neighborhood,
+      interest: contactContext.interest ?? contact.interest,
+      notes: contactContext.notes ?? contact.notes,
+      next_action: contactContext.next_action ?? contact.next_action,
       last_message_at: messageCreatedAt,
       raw: { ...(contact.raw ?? {}), ...contactRaw } as any,
     };
