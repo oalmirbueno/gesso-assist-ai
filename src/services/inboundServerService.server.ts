@@ -287,6 +287,7 @@ export async function handleN8nInboundPayloadAdmin(
         (payload.message.raw as any)?.lid_jid ??
         null);
   const canonicalRemoteJid = preferredPhoneJid ?? remoteJid;
+  const externalId = payload.conversation?.external_id ?? canonicalRemoteJid;
   const displayName =
     payload.contact.display_name ??
     payload.contact.pushName ??
@@ -336,6 +337,16 @@ export async function handleN8nInboundPayloadAdmin(
       .maybeSingle();
     if (error) throw error;
     byJid = byPreferredJid;
+  }
+  if (!byJid && externalId) {
+    const { data: byExternalId, error } = await supabaseAdmin
+      .from("gs_whatsapp_conversations")
+      .select("*")
+      .eq("provider_instance", providerInstance)
+      .eq("external_id", externalId)
+      .maybeSingle();
+    if (error) throw error;
+    byJid = byExternalId;
   }
   if (!byJid) {
     const { data: byRawLid, error } = await supabaseAdmin
@@ -472,6 +483,7 @@ export async function handleN8nInboundPayloadAdmin(
         provider,
         provider_instance: providerInstance,
         remote_jid: remoteJid,
+        external_id: externalId,
         status: payload.conversation?.status ?? "nova",
         ai_enabled: payload.conversation?.ai_enabled ?? true,
         needs_human: payload.conversation?.needs_human ?? false,
@@ -505,6 +517,7 @@ export async function handleN8nInboundPayloadAdmin(
         contact_id: contact.id,
         provider_instance: providerInstance,
         remote_jid: effectiveRemoteJid,
+        external_id: externalId ?? conversation.external_id,
         status: payload.conversation?.status ?? conversation.status,
         ai_enabled: payload.conversation?.ai_enabled ?? conversation.ai_enabled,
         needs_human: payload.conversation?.needs_human ?? conversation.needs_human,
