@@ -53,7 +53,7 @@ function Settings() {
 
   return (
     <AppShell title="Configurações">
-      <div className="p-6 grid gap-4 max-w-3xl">
+      <div className="p-6 lg:p-8 grid gap-6 w-full max-w-[1500px] mx-auto">
         <Alert className="border-primary/40 bg-primary/5">
           <Info className="h-4 w-4 text-primary" />
           <AlertTitle>O n8n é o cérebro da IA</AlertTitle>
@@ -65,35 +65,37 @@ function Settings() {
           </AlertDescription>
         </Alert>
 
-        <Card className="p-5 space-y-4">
-          <div className="flex items-center gap-2">
-            <Bot className="h-5 w-5 text-primary" />
-            <h2 className="font-semibold">Agente Comercial GS Gesso (no n8n)</h2>
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Conversa naturalmente, entende contexto e áudio transcrito, qualifica
-            lead, quebra objeções, pede dados de orçamento e aciona humano quando
-            necessário. Nunca inventa preço, prazo ou estoque.
-          </p>
-          <div>
-            <Label>Persona / instruções base (referência, fonte da verdade está no n8n)</Label>
-            <Textarea
-              rows={5}
-              defaultValue={
-                "Você é o atendente comercial da GS Gesso. Fale como pessoa, simples e profissional. Não invente preço, estoque ou prazo. Para orçamento peça metragem, bairro e urgência. Acione humano em negociação, reclamação ou lead quente."
-              }
-            />
-          </div>
-          <div className="flex items-center justify-between border rounded-md p-3">
-            <div>
-              <p className="text-sm font-medium">IA ativa por padrão em novas conversas</p>
-              <p className="text-xs text-muted-foreground">Pode ser desativada por conversa</p>
+        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(420px,0.75fr)] items-start">
+          <Card className="p-6 space-y-5 min-w-0">
+            <div className="flex items-center gap-2">
+              <Bot className="h-5 w-5 text-primary" />
+              <h2 className="font-semibold">Agente Comercial GS Gesso (no n8n)</h2>
             </div>
-            <Switch defaultChecked />
-          </div>
-        </Card>
+            <p className="text-sm text-muted-foreground max-w-4xl">
+              Conversa naturalmente, entende contexto e áudio transcrito, qualifica
+              lead, quebra objeções, pede dados de orçamento e aciona humano quando
+              necessário. Nunca inventa preço, prazo ou estoque.
+            </p>
+            <div className="space-y-2">
+              <Label>Persona / instruções base (referência, fonte da verdade está no n8n)</Label>
+              <Textarea
+                rows={8}
+                className="min-h-44 text-sm leading-relaxed"
+                defaultValue={
+                  "Você é o atendente comercial da GS Gesso. Fale como pessoa, simples e profissional. Não invente preço, estoque ou prazo. Para orçamento peça metragem, bairro e urgência. Acione humano em negociação, reclamação ou lead quente."
+                }
+              />
+            </div>
+            <div className="flex items-center justify-between border rounded-md p-4 gap-4">
+              <div>
+                <p className="text-sm font-medium">IA ativa por padrão em novas conversas</p>
+                <p className="text-xs text-muted-foreground">Pode ser desativada por conversa</p>
+              </div>
+              <Switch defaultChecked />
+            </div>
+          </Card>
 
-        <Card className="p-5 space-y-3">
+          <Card className="p-6 space-y-3 min-w-0">
           <div className="flex items-center gap-2">
             <Workflow className="h-5 w-5 text-primary" />
             <h2 className="font-semibold">Integrações n8n</h2>
@@ -165,9 +167,10 @@ function Settings() {
               )}
             </div>
           )}
-        </Card>
+          </Card>
+        </div>
 
-        <Card className="p-5 space-y-3">
+        <Card className="p-6 space-y-3">
           <div className="flex items-center gap-2">
             <Plug className="h-5 w-5 text-primary" />
             <h2 className="font-semibold">Integrações externas (gerenciadas no n8n)</h2>

@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
+import { isProductionWhatsappConversation, isProductionWhatsappEvent } from "@/lib/whatsappProduction";
 import {
   MessageSquarePlus,
   UserCheck,
@@ -34,6 +35,14 @@ type RecentEvent = {
   event_type: string;
   created_at: string;
   payload: Record<string, unknown> | null;
+  conversation?: {
+    remote_jid?: string | null;
+    contact?: {
+      name?: string | null;
+      display_name?: string | null;
+      phone?: string | null;
+    } | null;
+  } | null;
 };
 
 const empty: Stats = {
@@ -50,22 +59,10 @@ function Dashboard() {
   const [events, setEvents] = useState<RecentEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
-  async function load() {
+  function commit(convs: unknown[] = [], evts: RecentEvent[] = []) {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
-
-    const [convs, evts] = await Promise.all([
-      supabase
-        .from("gs_whatsapp_conversations")
-        .select("status,ai_enabled,needs_human,intent,updated_at"),
-      supabase
-        .from("gs_whatsapp_events")
-        .select("id,event_type,created_at,payload")
-        .order("created_at", { ascending: false })
-        .limit(8),
-    ]);
-
-    const list = convs.data ?? [];
+    const list = (convs as any[]).filter(isProductionWhatsappConversation);
     setStats({
       novas: list.filter((c) => c.status === "nova").length,
       precisaHumano: list.filter((c) => c.needs_human).length,
@@ -73,11 +70,27 @@ function Dashboard() {
       resolvidasHoje: list.filter(
         (c) => c.status === "resolvida" && new Date(c.updated_at) >= todayStart,
       ).length,
-      leadsQuentes: list.filter((c) => c.intent === "compra_quente" || c.needs_human)
-        .length,
+      leadsQuentes: list.filter((c) => c.intent === "compra_quente" || c.needs_human).length,
       iaAtiva: list.filter((c) => c.ai_enabled).length,
     });
-    setEvents((evts.data as RecentEvent[]) ?? []);
+    setEvents(evts.filter(isProductionWhatsappEvent).slice(0, 8));
+  }
+
+  async function load() {
+    setLoading(true);
+    const [convs, evts] = await Promise.all([
+      supabase
+        .from("gs_whatsapp_conversations")
+        .select("status,ai_enabled,needs_human,intent,updated_at,remote_jid,contact:gs_whatsapp_contacts(name,display_name,phone)"),
+      supabase
+        .from("gs_whatsapp_events")
+        .select("id,event_type,created_at,payload,conversation:gs_whatsapp_conversations(remote_jid,contact:gs_whatsapp_contacts(name,display_name,phone))")
+        .order("created_at", { ascending: false })
+        .limit(50),
+    ]);
+
+    if (convs.error || evts.error) console.error("dashboard load failed", convs.error ?? evts.error);
+    commit((convs.data ?? []) as any[], (evts.data as RecentEvent[]) ?? []);
     setLoading(false);
   }
 
@@ -93,6 +106,16 @@ function Dashboard() {
       .on(
         "postgres_changes",
         { event: "INSERT", schema: "public", table: "gs_whatsapp_events" },
+        () => load(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "gs_whatsapp_contacts" },
+        () => load(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "gs_whatsapp_messages" },
         () => load(),
       )
       .subscribe();
