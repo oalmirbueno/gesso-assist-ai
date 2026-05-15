@@ -11,9 +11,15 @@ const PROJECT_REF =
 
 export function GsRealtimeStatus({
   conversationCount,
+  totalMessageCount,
+  selectedConversationId,
+  selectedRemoteJid,
   messageCount,
 }: {
   conversationCount: number;
+  totalMessageCount: number;
+  selectedConversationId: string | null;
+  selectedRemoteJid: string | null;
   messageCount: number;
 }) {
   const [status, setStatus] = useState<"connecting" | "connected" | "closed">(
@@ -45,7 +51,7 @@ export function GsRealtimeStatus({
         : "bg-destructive";
 
   return (
-    <div className="flex items-center gap-3 text-[11px] text-muted-foreground border-b bg-muted/30 px-6 py-1.5">
+    <div className="flex flex-wrap items-center gap-3 text-[11px] text-muted-foreground border-b bg-muted/30 px-6 py-1.5">
       <span className="flex items-center gap-1.5">
         <span className={`h-1.5 w-1.5 rounded-full ${dot}`} />
         Realtime {status}
@@ -56,10 +62,19 @@ export function GsRealtimeStatus({
       </span>
       <span className="opacity-60">·</span>
       <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
-        {conversationCount} conversas
+        {conversationCount} conversas reais
       </Badge>
       <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
-        {messageCount} msgs na atual
+        {totalMessageCount} msgs total
+      </Badge>
+      <Badge variant="secondary" className="h-4 px-1.5 text-[10px] font-mono">
+        id {selectedConversationId ?? "—"}
+      </Badge>
+      <Badge variant="secondary" className="h-4 px-1.5 text-[10px] font-mono">
+        jid {selectedRemoteJid ?? "—"}
+      </Badge>
+      <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">
+        {messageCount} msgs carregadas
       </Badge>
     </div>
   );
