@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { isKnownWhatsappTestRecord, isProductionWhatsappConversation } from "@/lib/whatsappProduction";
 
 export interface GsContact {
   id: string;
@@ -35,6 +34,9 @@ export interface GsConversation {
   last_message_at: string | null;
   provider_instance: string | null;
   remote_jid: string | null;
+  summary: string | null;
+  ai_last_decision: Record<string, unknown> | null;
+  raw?: any;
   contact?: GsContact;
 }
 
@@ -49,8 +51,27 @@ export interface GsMessage {
   audio_url: string | null;
   transcript: string | null;
   intent: string | null;
+  ai_reply: string | null;
+  raw?: any;
   confidence: number | null;
   created_at: string;
+}
+
+export function jidLocalId(remoteJid?: string | null) {
+  return String(remoteJid ?? "").split("@")[0] || null;
+}
+
+export function getGsConversationDisplayName(conversation: Pick<GsConversation, "remote_jid" | "contact">): string {
+  const contact = conversation.contact;
+  return String(
+    contact?.display_name ||
+    contact?.raw?.pushName ||
+    contact?.raw?.push_name ||
+    contact?.name ||
+    jidLocalId(conversation.remote_jid) ||
+    contact?.phone ||
+    "Sem nome"
+  );
 }
 
 export interface GsSeller {
@@ -93,8 +114,7 @@ export function useGsConversations() {
       .order("last_message_at", { ascending: false, nullsFirst: false })
       .limit(200);
     if (error) console.error("load gs conversations failed:", error);
-    const productionRows = ((rows ?? []) as any[]).filter(isProductionWhatsappConversation);
-    setData(productionRows as any);
+    setData((rows ?? []) as any);
     setLoading(false);
   }, []);
 
@@ -164,28 +184,66 @@ export function useGsMessages(conversationId: string | null) {
   return messages;
 }
 
-export function useGsDiagnostics() {
-  const [counts, setCounts] = useState({ conversations: 0, messages: 0 });
+export function useGsMessageSearchIndex() {
+  const [index, setIndex] = useState<Record<string, string>>({});
 
   const reload = useCallback(async () => {
-    const [conversationResult, messageResult] = await Promise.all([
+    const { data, error } = await supabase
+      .from("gs_whatsapp_messages" as any)
+      .select("conversation_id, body, transcript")
+      .order("created_at", { ascending: false })
+      .limit(1000);
+    if (error) {
+      console.error("load gs message search index failed:", error);
+      return;
+    }
+    const next: Record<string, string> = {};
+    for (const row of (data ?? []) as any[]) {
+      const key = row.conversation_id;
+      if (!key) continue;
+      next[key] = [next[key], row.body, row.transcript].filter(Boolean).join(" ");
+    }
+    setIndex(next);
+  }, []);
+
+  useEffect(() => {
+    reload();
+    const ch = supabase
+      .channel(`gs-message-search-${Date.now()}-${Math.random().toString(36).slice(2)}`)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "gs_whatsapp_messages" }, reload)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "gs_whatsapp_messages" }, reload)
+      .subscribe();
+    return () => {
+      supabase.removeChannel(ch);
+    };
+  }, [reload]);
+
+  return index;
+}
+
+export function useGsDiagnostics() {
+  const [counts, setCounts] = useState({ conversations: 0, messages: 0, lidConversations: 0, backfillEvents: 0 });
+
+  const reload = useCallback(async () => {
+    const [conversationResult, messageResult, eventResult] = await Promise.all([
       supabase
         .from("gs_whatsapp_conversations" as any)
-        .select("id, remote_jid, contact:gs_whatsapp_contacts(name, display_name, phone)"),
+        .select("id, remote_jid, contact:gs_whatsapp_contacts(name, display_name, phone, raw)"),
       supabase
         .from("gs_whatsapp_messages" as any)
-        .select("id, provider_message_id, body, conversation:gs_whatsapp_conversations(remote_jid, contact:gs_whatsapp_contacts(name, display_name, phone))"),
+        .select("id, provider_message_id, body"),
+      supabase
+        .from("gs_whatsapp_events" as any)
+        .select("id, event_type")
+        .eq("event_type", "evolution_history_backfill"),
     ]);
-    const conversations = ((conversationResult.data ?? []) as any[]).filter(isProductionWhatsappConversation);
-    const messages = ((messageResult.data ?? []) as any[]).filter((m) =>
-      isProductionWhatsappConversation({
-        remote_jid: m.conversation?.remote_jid,
-        contact: m.conversation?.contact,
-      }) && !isKnownWhatsappTestRecord(m),
-    );
+    const conversations = (conversationResult.data ?? []) as any[];
+    const messages = (messageResult.data ?? []) as any[];
     setCounts({
       conversations: conversations.length,
       messages: messages.length,
+      lidConversations: conversations.filter((c) => String(c.remote_jid ?? "").includes("@lid")).length,
+      backfillEvents: (eventResult.data ?? []).length,
     });
   }, []);
 

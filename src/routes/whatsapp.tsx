@@ -17,7 +17,8 @@ import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import {
-  useGsConversations, useGsDiagnostics, useGsMessages, useGsTable,
+  getGsConversationDisplayName, jidLocalId, useGsConversations, useGsDiagnostics,
+  useGsMessageSearchIndex, useGsMessages, useGsTable,
   type GsConversation, type GsMessage, type GsSeller, type GsSlot, type GsFact,
 } from "@/hooks/useGsRealtime";
 import { gsService, type GsCommandResult } from "@/services/gsGessoWhatsAppService";
@@ -118,6 +119,10 @@ function fmtTime(iso?: string | null) {
   return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
 }
 
+function includesSearch(value: unknown, search: string) {
+  return String(value ?? "").toLowerCase().includes(search);
+}
+
 function WhatsAppCockpit() {
   return (
     <AppShell
@@ -191,6 +196,7 @@ function InboxView() {
   const [filter, setFilter] = useState("todas");
   const [search, setSearch] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const messageSearchIndex = useGsMessageSearchIndex();
 
   const stats = useMemo(() => {
     const ativas = conversations.filter((c) => !["resolvida"].includes(c.status)).length;
@@ -213,12 +219,15 @@ function InboxView() {
     if (search.trim()) {
       const s = search.toLowerCase();
       arr = arr.filter((c) =>
-        [c.contact?.name, c.contact?.phone, c.contact?.neighborhood, c.contact?.interest, c.intent]
-          .filter(Boolean).some((v) => String(v).toLowerCase().includes(s)),
+        [
+          getGsConversationDisplayName(c), c.remote_jid, jidLocalId(c.remote_jid), c.contact?.phone,
+          c.contact?.display_name, c.contact?.name, c.contact?.raw?.pushName, c.contact?.neighborhood,
+          c.contact?.interest, c.intent, c.summary, messageSearchIndex[c.id],
+        ].some((v) => includesSearch(v, s)),
       );
     }
     return arr;
-  }, [conversations, filter, search]);
+  }, [conversations, filter, messageSearchIndex, search]);
 
   const selected = conversations.find((c) => c.id === selectedId) ?? null;
   const selectedMessages = useGsMessages(selectedId);
@@ -240,8 +249,13 @@ function InboxView() {
         conversationCount={diagnostics.conversations || conversations.length}
         totalMessageCount={diagnostics.messages}
         selectedConversationId={selectedId}
+        selectedContactId={selected?.contact_id ?? null}
         selectedRemoteJid={selected?.remote_jid ?? null}
+        selectedContactPhone={selected?.contact?.phone ?? null}
+        selectedDisplayName={selected ? getGsConversationDisplayName(selected) : null}
         messageCount={selectedMessages.length}
+        lidConversationCount={diagnostics.lidConversations}
+        backfillEventCount={diagnostics.backfillEvents}
       />
       {/* stats */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 p-4 border-b bg-card/50">
@@ -283,6 +297,7 @@ function InboxView() {
               {filtered.map((c) => {
                 const seller = sellers.find((s) => s.id === c.current_seller_id);
                 const active = c.id === selectedId;
+                const displayName = getGsConversationDisplayName(c);
                 return (
                   <li key={c.id}>
                     <button onClick={() => setSelectedId(c.id)}
@@ -291,12 +306,12 @@ function InboxView() {
                       }`}>
                       <div className="flex items-center justify-between gap-2">
                         <div className="font-medium text-sm truncate">
-                          {c.contact?.display_name ?? c.contact?.name ?? c.contact?.phone ?? c.remote_jid ?? "Sem nome"}
+                          {displayName}
                         </div>
                         <span className="text-[10px] text-muted-foreground shrink-0">{fmtTime(c.last_message_at)}</span>
                       </div>
                       <div className="text-[11px] text-muted-foreground truncate">
-                        {c.contact?.phone}{c.remote_jid ? ` · ${c.remote_jid}` : ""}{c.contact?.neighborhood ? ` · ${c.contact.neighborhood}` : ""}
+                        {c.contact?.phone || jidLocalId(c.remote_jid)}{c.remote_jid ? ` · ${c.remote_jid}` : ""}{c.contact?.neighborhood ? ` · ${c.contact.neighborhood}` : ""}
                       </div>
                       <div className="flex flex-wrap gap-1 mt-1.5">
                         <Badge variant="outline" className="text-[9px] py-0 h-4">
@@ -322,7 +337,7 @@ function InboxView() {
 
         {/* CRM */}
         <aside className="hidden md:flex col-span-3 flex-col min-h-0 overflow-auto">
-          {selected ? <CrmPanel conv={selected} sellers={sellers} /> : (
+          {selected ? <CrmPanel conv={selected} sellers={sellers} messages={selectedMessages} /> : (
             <div className="p-6 text-xs text-muted-foreground">Selecione uma conversa para ver dados do cliente.</div>
           )}
         </aside>
@@ -452,9 +467,11 @@ function ConversationView({
   }
 
   const currentSeller = sellers.find((s) => s.id === conv.current_seller_id);
+  const displayName = getGsConversationDisplayName(conv);
+  const phoneOrJid = conv.contact?.phone || jidLocalId(conv.remote_jid) || conv.remote_jid;
 
   const initials =
-    (conv.contact?.display_name ?? conv.contact?.name ?? conv.contact?.phone ?? conv.remote_jid ?? "?")
+    (displayName ?? "?")
       .replace(/[^A-Za-zÀ-ÿ0-9 ]/g, "")
       .trim()
       .split(/\s+/)
@@ -471,9 +488,9 @@ function ConversationView({
             {initials}
           </div>
           <div className="min-w-0">
-            <div className="font-semibold text-sm truncate">{conv.contact?.display_name ?? conv.contact?.name ?? conv.contact?.phone ?? conv.remote_jid}</div>
+            <div className="font-semibold text-sm truncate">{displayName}</div>
             <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground truncate">
-              <span>{conv.contact?.phone}</span>
+              <span>{phoneOrJid}</span>
               {conv.remote_jid && <><span>·</span><span className="font-mono">{conv.remote_jid}</span></>}
               {conv.intent && <><span>·</span><span>intenção: <span className="text-foreground">{conv.intent}</span></span></>}
               {conv.ai_confidence != null && <span>· {Math.round(conv.ai_confidence * 100)}%</span>}
@@ -677,11 +694,17 @@ function ConversationView({
 }
 
 /* ============== CRM PANEL ============== */
-function CrmPanel({ conv }: { conv: GsConversation; sellers: GsSeller[] }) {
+function CrmPanel({ conv, messages }: { conv: GsConversation; sellers: GsSeller[]; messages: GsMessage[] }) {
   const c = conv.contact;
   const [stage, setStage] = useState(c?.stage ?? "novo");
   const [notes, setNotes] = useState(c?.notes ?? "");
   const [nextAction, setNextAction] = useState(c?.next_action ?? "");
+  const latestIntent = [...messages].reverse().find((m) => m.intent)?.intent ?? conv.intent;
+  const latestAiReply = [...messages].reverse().find((m) => m.ai_reply)?.ai_reply ?? conv.ai_draft_reply;
+  const aiDecision = (conv.ai_last_decision ?? {}) as any;
+  const collectedFields = aiDecision.collected_fields ?? aiDecision.collected ?? null;
+  const missingFields = aiDecision.missing_fields ?? aiDecision.missing ?? null;
+  const displayName = getGsConversationDisplayName(conv);
 
   async function save() {
     if (!c) return;
@@ -695,8 +718,19 @@ function CrmPanel({ conv }: { conv: GsConversation; sellers: GsSeller[] }) {
     <div className="p-4 space-y-4 text-sm">
       <div>
         <div className="text-[10px] uppercase tracking-wide text-muted-foreground mb-1">Cliente</div>
-        <div className="font-semibold">{c.name ?? "Sem nome"}</div>
-        <div className="text-xs text-muted-foreground">{c.phone}</div>
+        <div className="font-semibold">{displayName}</div>
+        <div className="text-xs text-muted-foreground font-mono">{c.phone || jidLocalId(conv.remote_jid) || "·"}</div>
+      </div>
+
+      <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+        <Field label="Resumo" value={conv.summary} />
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <Field label="Última intenção" value={latestIntent} />
+          <Field label="Etapa" value={FUNNEL_LABELS[c.stage] ?? c.stage} />
+        </div>
+        {latestAiReply && <Field label="Última resposta IA" value={latestAiReply} />}
+        {collectedFields && <Field label="Campos coletados" value={JSON.stringify(collectedFields)} />}
+        {missingFields && <Field label="Campos faltantes" value={Array.isArray(missingFields) ? missingFields.join(", ") : JSON.stringify(missingFields)} />}
       </div>
 
       <div className="grid grid-cols-2 gap-2 text-xs">

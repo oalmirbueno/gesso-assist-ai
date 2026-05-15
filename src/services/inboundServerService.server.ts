@@ -17,6 +17,43 @@ function readBody(rawMessage: any) {
   );
 }
 
+function normalizeMessageParts(message: any) {
+  const candidates =
+    message?.parts ??
+    message?.message_parts ??
+    message?.body_parts ??
+    message?.chunks ??
+    message?.messages ??
+    null;
+  if (!Array.isArray(candidates) || candidates.length === 0) return null;
+  return candidates
+    .map((part: any) => (typeof part === "string" ? { body: part } : part))
+    .filter((part: any) => part && String(part.body ?? part.text ?? "").trim());
+}
+
+function withUniquePartProviderId(base: string | null | undefined, index: number, total: number) {
+  if (!base) return null;
+  return total > 1 ? `${base}_${index + 1}` : base;
+}
+
+export function expandInboundPayloadBatch(rawPayload: any): N8nInboundPayload[] {
+  if (Array.isArray(rawPayload)) return rawPayload as N8nInboundPayload[];
+  const messages =
+    rawPayload?.messages ??
+    rawPayload?.message_parts ??
+    rawPayload?.data?.messages ??
+    rawPayload?.data?.messages?.records ??
+    null;
+  if (!Array.isArray(messages)) return [rawPayload as N8nInboundPayload];
+  return messages.map((message: any) => ({
+    ...rawPayload,
+    contact: message.contact ?? rawPayload.contact,
+    conversation: message.conversation ?? rawPayload.conversation,
+    message: { ...(typeof message === "string" ? { body: message } : message) },
+    meta: { ...(rawPayload.meta ?? {}), ...(message.meta ?? {}) },
+  })) as N8nInboundPayload[];
+}
+
 function normalizeInboundPayload(rawPayload: any): N8nInboundPayload {
   const data = rawPayload?.data ?? rawPayload?.message?.raw?.data ?? {};
   const key = data?.key ?? rawPayload?.key ?? rawPayload?.message?.raw?.key ?? {};
@@ -29,6 +66,9 @@ function normalizeInboundPayload(rawPayload: any): N8nInboundPayload {
     rawPayload?.jid ??
     rawPayload?.meta?.remote_jid ??
     rawPayload?.meta?.jid ??
+    rawPayload?.message?.remote_jid ??
+    rawPayload?.message?.remoteJid ??
+    rawPayload?.message?.key?.remoteJid ??
     rawMessage?.raw?.remote_jid ??
     rawMessage?.raw?.key?.remoteJid ??
     data?.remoteJid ??
@@ -46,6 +86,8 @@ function normalizeInboundPayload(rawPayload: any): N8nInboundPayload {
     rawPayload?.contact?.display_name ??
     rawPayload?.contact?.name ??
     rawPayload?.pushName ??
+    rawPayload?.message?.pushName ??
+    rawPayload?.message?.push_name ??
     data?.pushName ??
     null;
   const fromMe = Boolean(key?.fromMe ?? data?.fromMe ?? rawPayload?.fromMe);
@@ -142,6 +184,11 @@ export async function handleN8nInboundPayloadAdmin(
     lid_jid: lidJid,
     pushName: displayName,
   };
+  const contactContext = {
+    interest: (payload.contact as any).interest ?? (payload.ai as any)?.collected_fields?.interest ?? null,
+    notes: (payload.contact as any).notes ?? (payload.ai as any)?.notes ?? null,
+    next_action: (payload.contact as any).next_action ?? (payload.ai as any)?.next_action ?? null,
+  };
 
   // 1) Conversation lookup by operational key before deciding which contact to update.
   const { data: byJidRow, error: byJidErr } = await supabaseAdmin
@@ -197,6 +244,9 @@ export async function handleN8nInboundPayloadAdmin(
           tags: (payload.contact.tags as any) ?? [],
           city: payload.contact.city ?? null,
           neighborhood: payload.contact.neighborhood ?? null,
+          interest: contactContext.interest,
+          notes: contactContext.notes,
+          next_action: contactContext.next_action,
           last_message_at: messageCreatedAt,
           raw: contactRaw as any,
         },
@@ -216,6 +266,9 @@ export async function handleN8nInboundPayloadAdmin(
       tags: (payload.contact.tags as any) ?? contact.tags,
       city: payload.contact.city ?? contact.city,
       neighborhood: payload.contact.neighborhood ?? contact.neighborhood,
+      interest: contactContext.interest ?? contact.interest,
+      notes: contactContext.notes ?? contact.notes,
+      next_action: contactContext.next_action ?? contact.next_action,
       last_message_at: messageCreatedAt,
       raw: { ...(contact.raw ?? {}), ...contactRaw } as any,
     };
@@ -319,42 +372,56 @@ export async function handleN8nInboundPayloadAdmin(
   }
 
   // 3) Message (idempotent on provider_message_id when present)
-  const messageRow: any = {
-    conversation_id: conversation.id,
-    contact_id: contact.id,
-    direction: payload.message.direction,
-    sender_type: payload.message.sender_type,
-    body: payload.message.body ?? null,
-    message_type: payload.message.message_type ?? "text",
-    audio_url: payload.message.audio_url ?? null,
-    transcript: payload.message.transcript ?? null,
-    provider_message_id: payload.message.provider_message_id ?? null,
-    raw: { ...((payload.message.raw as any) ?? {}), remote_jid: remoteJid, lid_jid: lidJid },
-    created_at: messageCreatedAt,
-    intent: aiFields.intent,
-    confidence: aiFields.ai_confidence,
-    needs_human: payload.conversation?.needs_human ?? null,
-    ai_reply: aiFields.ai_draft_reply,
-  };
+  const parts = normalizeMessageParts(payload.message) ?? [{ body: payload.message.body }];
+  const insertedMessageIds: string[] = [];
+  for (let index = 0; index < parts.length; index += 1) {
+    const part = parts[index] as any;
+    const messageRow: any = {
+      conversation_id: conversation.id,
+      contact_id: contact.id,
+      direction: part.direction ?? payload.message.direction,
+      sender_type: part.sender_type ?? payload.message.sender_type,
+      body: part.body ?? part.text ?? payload.message.body ?? null,
+      message_type: part.message_type ?? payload.message.message_type ?? "text",
+      audio_url: part.audio_url ?? payload.message.audio_url ?? null,
+      transcript: part.transcript ?? payload.message.transcript ?? null,
+      provider_message_id:
+        part.provider_message_id ??
+        withUniquePartProviderId(payload.message.provider_message_id, index, parts.length),
+      raw: {
+        ...((payload.message.raw as any) ?? {}),
+        ...((part.raw as any) ?? {}),
+        remote_jid: remoteJid,
+        lid_jid: lidJid,
+        part_index: parts.length > 1 ? index + 1 : undefined,
+        part_count: parts.length > 1 ? parts.length : undefined,
+      },
+      created_at: part.created_at ?? messageCreatedAt,
+      intent: part.intent ?? aiFields.intent,
+      confidence: part.confidence ?? aiFields.ai_confidence,
+      needs_human: payload.conversation?.needs_human ?? null,
+      ai_reply: part.ai_reply ?? aiFields.ai_draft_reply,
+    };
 
-  let messageId: string;
-  if (payload.message.provider_message_id) {
-    const { data, error } = await supabaseAdmin
-      .from("gs_whatsapp_messages")
-      .upsert(messageRow, { onConflict: "provider_message_id" })
-      .select("id")
-      .single();
-    if (error) throw error;
-    messageId = data.id;
-  } else {
-    const { data, error } = await supabaseAdmin
-      .from("gs_whatsapp_messages")
-      .insert(messageRow)
-      .select("id")
-      .single();
-    if (error) throw error;
-    messageId = data.id;
+    if (messageRow.provider_message_id) {
+      const { data, error } = await supabaseAdmin
+        .from("gs_whatsapp_messages")
+        .upsert(messageRow, { onConflict: "provider_message_id" })
+        .select("id")
+        .single();
+      if (error) throw error;
+      insertedMessageIds.push(data.id);
+    } else {
+      const { data, error } = await supabaseAdmin
+        .from("gs_whatsapp_messages")
+        .insert(messageRow)
+        .select("id")
+        .single();
+      if (error) throw error;
+      insertedMessageIds.push(data.id);
+    }
   }
+  const messageId = insertedMessageIds[0];
 
   // 4) Events
   const events: Array<{ event_type: string; payload: any }> = [
