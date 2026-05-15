@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
+import { isProductionWhatsappConversation, isProductionWhatsappEvent } from "@/lib/whatsappProduction";
 import {
   MessageSquarePlus,
   UserCheck,
@@ -57,7 +58,7 @@ function Dashboard() {
     const [convs, evts] = await Promise.all([
       supabase
         .from("gs_whatsapp_conversations")
-        .select("status,ai_enabled,needs_human,intent,updated_at"),
+        .select("status,ai_enabled,needs_human,intent,updated_at,remote_jid,contact:gs_whatsapp_contacts(name,display_name,phone)"),
       supabase
         .from("gs_whatsapp_events")
         .select("id,event_type,created_at,payload")
@@ -65,7 +66,8 @@ function Dashboard() {
         .limit(8),
     ]);
 
-    const list = convs.data ?? [];
+    const list = ((convs.data ?? []) as any[]).filter(isProductionWhatsappConversation);
+    const productionEvents = ((evts.data as RecentEvent[]) ?? []).filter(isProductionWhatsappEvent);
     setStats({
       novas: list.filter((c) => c.status === "nova").length,
       precisaHumano: list.filter((c) => c.needs_human).length,
@@ -77,7 +79,7 @@ function Dashboard() {
         .length,
       iaAtiva: list.filter((c) => c.ai_enabled).length,
     });
-    setEvents((evts.data as RecentEvent[]) ?? []);
+    setEvents(productionEvents);
     setLoading(false);
   }
 
