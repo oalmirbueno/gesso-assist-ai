@@ -123,6 +123,24 @@ function includesSearch(value: unknown, search: string) {
   return String(value ?? "").toLowerCase().includes(search);
 }
 
+function nonTextLabel(m: GsMessage): string {
+  const t = String(m.message_type || m.raw?.messageType || "").toLowerCase();
+  if (t.includes("contact")) {
+    const name =
+      m.raw?.message?.contactMessage?.displayName ||
+      m.raw?.contactMessage?.displayName ||
+      m.media?.displayName;
+    return name ? `📇 Contato compartilhado: ${name}` : "📇 Contato compartilhado";
+  }
+  if (t.includes("image")) return "📷 Imagem recebida";
+  if (t.includes("video")) return "🎥 Vídeo recebido";
+  if (t.includes("document")) return "📄 Documento recebido";
+  if (t.includes("sticker")) return "💟 Figurinha";
+  if (t.includes("location")) return "📍 Localização compartilhada";
+  if (t.includes("reaction")) return "👍 Reação";
+  return "Mensagem sem texto";
+}
+
 function WhatsAppCockpit() {
   return (
     <AppShell
