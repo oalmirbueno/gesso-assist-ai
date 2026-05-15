@@ -246,9 +246,11 @@ export async function handleN8nInboundPayloadAdmin(
   // 4) Events
   const events: Array<{ event_type: string; payload: any }> = [
     {
-      event_type: "n8n_inbound_received",
+      event_type: payload.event_type ?? "n8n_inbound_received",
       payload: {
         provider_message_id: payload.message.provider_message_id,
+        remote_jid: remoteJid,
+        lid_jid: lidJid,
         meta: payload.meta,
       },
     },
