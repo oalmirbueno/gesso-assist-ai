@@ -228,6 +228,27 @@ export async function handleN8nInboundPayloadAdmin(
     if (error) throw error;
     byJid = byRawLid;
   }
+  // Fallback por TELEFONE: a mesma pessoa pode chegar com remote_jid diferentes
+  // (ex: inbound como @lid, outbound como @s.whatsapp.net). Procura contato pelo
+  // phone e reusa a conversa mais recente dele para não duplicar.
+  if (!byJid && phone) {
+    const { data: phoneContacts } = await supabaseAdmin
+      .from("gs_whatsapp_contacts")
+      .select("id, raw")
+      .or(`phone.eq.${phone},raw->phone_aliases.cs.["${phone}"]`);
+    const candidateIds = (phoneContacts ?? []).map((c: any) => c.id);
+    if (candidateIds.length > 0) {
+      const { data: convByPhone } = await supabaseAdmin
+        .from("gs_whatsapp_conversations")
+        .select("*")
+        .eq("provider_instance", providerInstance)
+        .in("contact_id", candidateIds)
+        .order("last_message_at", { ascending: false, nullsFirst: false })
+        .limit(1)
+        .maybeSingle();
+      if (convByPhone) byJid = convByPhone;
+    }
+  }
 
   let contact: any = null;
   if (byJid?.contact_id) {
