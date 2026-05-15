@@ -679,9 +679,8 @@ function ConversationView({
         </div>
       </ScrollArea>
 
-      {/* diagnóstico de mensagens */}
-      <MessageDiagnostics messages={messages} />
-
+      {/* diagnóstico oculto por padrão; visível via "Eventos recentes" */}
+      {showAudit && <MessageDiagnostics messages={messages} />}
       {/* eventos recentes (auditoria) */}
       {showAudit && (
         <div className="border-t bg-card/70 px-4 py-2 max-h-44 overflow-auto shrink-0">
