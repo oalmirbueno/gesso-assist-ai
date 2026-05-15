@@ -441,6 +441,7 @@ export type Database = {
           created_at: string
           current_seller_id: string | null
           current_seller_key: string | null
+          external_id: string | null
           funnel_stage: string | null
           id: string
           intent: string | null
@@ -470,6 +471,7 @@ export type Database = {
           created_at?: string
           current_seller_id?: string | null
           current_seller_key?: string | null
+          external_id?: string | null
           funnel_stage?: string | null
           id?: string
           intent?: string | null
@@ -499,6 +501,7 @@ export type Database = {
           created_at?: string
           current_seller_id?: string | null
           current_seller_key?: string | null
+          external_id?: string | null
           funnel_stage?: string | null
           id?: string
           intent?: string | null
