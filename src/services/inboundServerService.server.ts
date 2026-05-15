@@ -85,7 +85,9 @@ function normalizeInboundPayload(rawPayload: any): N8nInboundPayload {
     rawPayload?.contact_phone ??
     remoteJidDigits ??
     (fromMe ? undefined : data?.sender);
-  const pushName =
+  // Quando fromMe=true, pushName costuma ser "Você" (perspectiva do bot).
+  // Esses nomes não devem virar nome do contato.
+  const rawPushName =
     rawPayload?.contact?.pushName ??
     rawPayload?.contact?.push_name ??
     rawPayload?.contact?.display_name ??
@@ -95,6 +97,9 @@ function normalizeInboundPayload(rawPayload: any): N8nInboundPayload {
     rawPayload?.message?.push_name ??
     data?.pushName ??
     null;
+  const isSelfReferenceName = (n: any) =>
+    typeof n === "string" && /^(voc[eê]|you|me|eu)$/i.test(n.trim());
+  const pushName = fromMe && isSelfReferenceName(rawPushName) ? null : rawPushName;
   const timestamp = rawPayload?.message?.created_at ?? data?.messageTimestamp ?? rawPayload?.messageTimestamp;
   const createdAt = typeof timestamp === "number"
     ? new Date(timestamp > 9999999999 ? timestamp : timestamp * 1000).toISOString()
@@ -223,6 +228,31 @@ export async function handleN8nInboundPayloadAdmin(
     if (error) throw error;
     byJid = byRawLid;
   }
+  // Fallback por TELEFONE: a mesma pessoa pode chegar com remote_jid diferentes
+  // (ex: inbound como @lid, outbound como @s.whatsapp.net). Procura contato pelo
+  // phone e reusa a conversa mais recente dele para não duplicar.
+  let matchedByPhoneFallback = false;
+  if (!byJid && phone) {
+    const { data: phoneContacts } = await supabaseAdmin
+      .from("gs_whatsapp_contacts")
+      .select("id, raw")
+      .or(`phone.eq.${phone},raw->phone_aliases.cs.["${phone}"]`);
+    const candidateIds = (phoneContacts ?? []).map((c: any) => c.id);
+    if (candidateIds.length > 0) {
+      const { data: convByPhone } = await supabaseAdmin
+        .from("gs_whatsapp_conversations")
+        .select("*")
+        .eq("provider_instance", providerInstance)
+        .in("contact_id", candidateIds)
+        .order("last_message_at", { ascending: false, nullsFirst: false })
+        .limit(1)
+        .maybeSingle();
+      if (convByPhone) {
+        byJid = convByPhone;
+        matchedByPhoneFallback = true;
+      }
+    }
+  }
 
   let contact: any = null;
   if (byJid?.contact_id) {
@@ -261,8 +291,12 @@ export async function handleN8nInboundPayloadAdmin(
     if (error) throw error;
     contact = data;
   } else {
-    const patch = {
-      phone,
+    const existingAliases: string[] = Array.isArray(contact.raw?.phone_aliases) ? contact.raw.phone_aliases : [];
+    const aliasSet = new Set(existingAliases);
+    if (matchedByPhoneFallback && phone && phone !== contact.phone) aliasSet.add(phone);
+    const patch: any = {
+      // Em phone fallback NÃO sobrescreve phone (jids @lid vs @s.whatsapp.net geram phones diferentes do mesmo cliente)
+      phone: matchedByPhoneFallback ? contact.phone : (phone || contact.phone),
       name: payload.contact.name ?? contact.name ?? displayName,
       display_name: displayName ?? contact.display_name,
       source: payload.contact.source ?? contact.source,
@@ -274,7 +308,7 @@ export async function handleN8nInboundPayloadAdmin(
       notes: contactContext.notes ?? contact.notes,
       next_action: contactContext.next_action ?? contact.next_action,
       last_message_at: messageCreatedAt,
-      raw: { ...(contact.raw ?? {}), ...contactRaw } as any,
+      raw: { ...(contact.raw ?? {}), ...contactRaw, phone_aliases: Array.from(aliasSet) } as any,
     };
     const { data, error } = await supabaseAdmin
       .from("gs_whatsapp_contacts")
@@ -337,12 +371,19 @@ export async function handleN8nInboundPayloadAdmin(
     if (error) throw error;
     conversation = data;
   } else {
+    // Em phone fallback, preserva o remote_jid original da conversa e registra o jid alterno em raw.jid_aliases.
+    const existingJidAliases: string[] = Array.isArray((conversation.raw as any)?.jid_aliases)
+      ? (conversation.raw as any).jid_aliases
+      : [];
+    const jidAliasSet = new Set(existingJidAliases);
+    if (matchedByPhoneFallback && remoteJid && remoteJid !== conversation.remote_jid) jidAliasSet.add(remoteJid);
+    const effectiveRemoteJid = matchedByPhoneFallback ? conversation.remote_jid : remoteJid;
     const { data, error } = await supabaseAdmin
       .from("gs_whatsapp_conversations")
       .update({
         contact_id: contact.id,
         provider_instance: providerInstance,
-        remote_jid: remoteJid,
+        remote_jid: effectiveRemoteJid,
         status: payload.conversation?.status ?? conversation.status,
         ai_enabled:
           payload.conversation?.ai_enabled ?? conversation.ai_enabled,
@@ -363,7 +404,13 @@ export async function handleN8nInboundPayloadAdmin(
         ai_last_decision:
           aiFields.ai_last_decision ?? conversation.ai_last_decision,
         ai_draft_reply: aiFields.ai_draft_reply ?? conversation.ai_draft_reply,
-        raw: { ...((conversation.raw as any) ?? {}), ...(payload as any), remote_jid: remoteJid, lid_jid: lidJid } as any,
+        raw: {
+          ...((conversation.raw as any) ?? {}),
+          ...(payload as any),
+          remote_jid: effectiveRemoteJid,
+          lid_jid: lidJid ?? (conversation.raw as any)?.lid_jid,
+          jid_aliases: Array.from(jidAliasSet),
+        } as any,
         unread_count: isInbound
           ? (conversation.unread_count ?? 0) + 1
           : conversation.unread_count,
