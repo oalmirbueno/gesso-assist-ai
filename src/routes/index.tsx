@@ -35,6 +35,14 @@ type RecentEvent = {
   event_type: string;
   created_at: string;
   payload: Record<string, unknown> | null;
+  conversation?: {
+    remote_jid?: string | null;
+    contact?: {
+      name?: string | null;
+      display_name?: string | null;
+      phone?: string | null;
+    } | null;
+  } | null;
 };
 
 const empty: Stats = {
@@ -75,7 +83,7 @@ function Dashboard() {
         .select("status,ai_enabled,needs_human,intent,updated_at,remote_jid,contact:gs_whatsapp_contacts(name,display_name,phone)"),
       supabase
         .from("gs_whatsapp_events")
-        .select("id,event_type,created_at,payload")
+        .select("id,event_type,created_at,payload,conversation:gs_whatsapp_conversations(remote_jid,contact:gs_whatsapp_contacts(name,display_name,phone))")
         .order("created_at", { ascending: false })
         .limit(50),
     ]);
