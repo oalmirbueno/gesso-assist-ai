@@ -56,3 +56,14 @@ export function isProductionWhatsappConversation(conversation: {
     phone: conversation.contact?.phone,
   });
 }
+
+export function isProductionWhatsappEvent(event: {
+  payload?: Record<string, unknown> | null;
+}) {
+  const payload = event.payload ?? {};
+  return !isKnownWhatsappTestRecord({
+    remote_jid: String(payload.remote_jid ?? ""),
+    provider_message_id: String(payload.provider_message_id ?? ""),
+    body: JSON.stringify(payload),
+  });
+}
