@@ -491,14 +491,18 @@ export async function handleN8nInboundPayloadAdmin(
     const part = parts[index] as any;
     const partRaw = { ...((payload.message.raw as any) ?? {}), ...((part.raw as any) ?? {}) };
     const audioMsg = partRaw?.message?.audioMessage ?? partRaw?.audioMessage;
+    const partAudio = part.audio ?? (payload.message as any).audio ?? null;
     const mediaCandidate =
       part.media ??
       (payload.message as any).media ??
       partRaw?.media ??
+      partAudio ??
       (audioMsg ? { type: "audio", ...audioMsg } : null);
     const audioUrl =
       part.audio_url ??
       payload.message.audio_url ??
+      partAudio?.url ??
+      partAudio?.audio_url ??
       mediaCandidate?.url ??
       mediaCandidate?.audio_url ??
       audioMsg?.url ??
@@ -521,7 +525,7 @@ export async function handleN8nInboundPayloadAdmin(
       body: part.body ?? part.text ?? payload.message.body ?? null,
       message_type: messageType,
       audio_url: audioUrl,
-      transcript: part.transcript ?? payload.message.transcript ?? null,
+      transcript: readTranscript(part, partRaw, mediaCandidate) ?? readTranscript(payload.message, payload.message.raw, (payload.message as any).media) ?? null,
       media: mediaCandidate ?? {},
       provider_status: providerStatus,
       provider_message_id:
