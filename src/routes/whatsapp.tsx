@@ -60,7 +60,7 @@ function useGsEvents(conversationId: string | null, limit = 8) {
       if (alive) setEvents((data ?? []) as any);
     })();
     const ch = supabase
-      .channel(`gs-events-${conversationId}`)
+      .channel(`gs-events-${conversationId}-${Date.now()}-${Math.random().toString(36).slice(2)}`)
       .on(
         "postgres_changes",
         {
