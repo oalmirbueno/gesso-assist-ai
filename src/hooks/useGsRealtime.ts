@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { isKnownWhatsappTestRecord, isProductionWhatsappConversation } from "@/lib/whatsappProduction";
 
 export interface GsContact {
   id: string;
@@ -14,6 +15,7 @@ export interface GsContact {
   next_action: string | null;
   notes: string | null;
   tags: any;
+  raw?: any;
 }
 
 export interface GsConversation {
@@ -91,7 +93,8 @@ export function useGsConversations() {
       .order("last_message_at", { ascending: false, nullsFirst: false })
       .limit(200);
     if (error) console.error("load gs conversations failed:", error);
-    setData((rows ?? []) as any);
+    const productionRows = ((rows ?? []) as any[]).filter(isProductionWhatsappConversation);
+    setData(productionRows as any);
     setLoading(false);
   }, []);
 
@@ -168,14 +171,21 @@ export function useGsDiagnostics() {
     const [conversationResult, messageResult] = await Promise.all([
       supabase
         .from("gs_whatsapp_conversations" as any)
-        .select("id"),
+        .select("id, remote_jid, contact:gs_whatsapp_contacts(name, display_name, phone)"),
       supabase
         .from("gs_whatsapp_messages" as any)
-        .select("id"),
+        .select("id, provider_message_id, body, conversation:gs_whatsapp_conversations(remote_jid, contact:gs_whatsapp_contacts(name, display_name, phone))"),
     ]);
+    const conversations = ((conversationResult.data ?? []) as any[]).filter(isProductionWhatsappConversation);
+    const messages = ((messageResult.data ?? []) as any[]).filter((m) =>
+      isProductionWhatsappConversation({
+        remote_jid: m.conversation?.remote_jid,
+        contact: m.conversation?.contact,
+      }) && !isKnownWhatsappTestRecord(m),
+    );
     setCounts({
-      conversations: conversationResult.data?.length ?? 0,
-      messages: messageResult.data?.length ?? 0,
+      conversations: conversations.length,
+      messages: messages.length,
     });
   }, []);
 

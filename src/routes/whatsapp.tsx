@@ -224,6 +224,16 @@ function InboxView() {
   const selectedMessages = useGsMessages(selectedId);
   const diagnostics = useGsDiagnostics();
 
+  useEffect(() => {
+    if (filtered.length === 0) {
+      if (selectedId) setSelectedId(null);
+      return;
+    }
+    if (!selectedId || !filtered.some((c) => c.id === selectedId)) {
+      setSelectedId(filtered[0].id);
+    }
+  }, [filtered, selectedId]);
+
   return (
     <div className="h-full flex flex-col">
       <GsRealtimeStatus
@@ -325,10 +335,9 @@ function EmptyConversations() {
   return (
     <div className="p-8 text-center space-y-3">
       <MessageSquare className="h-10 w-10 mx-auto text-muted-foreground/50" />
-      <div className="text-sm font-medium">Nenhuma conversa ainda</div>
+      <div className="text-sm font-medium">Nenhuma conversa de produção sincronizada ainda</div>
       <p className="text-xs text-muted-foreground leading-relaxed">
-        A sincronização começa quando o n8n enviar eventos para
-        <span className="font-mono text-[10px] block mt-1 text-foreground/70">receive-gs-gesso-event</span>
+        O painel agora ignora testes/backfills antigos e mostra somente eventos reais recebidos do Evolution/n8n.
       </p>
     </div>
   );

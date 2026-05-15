@@ -1,13 +1,102 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import type { InboundResult, N8nInboundPayload } from "@/types/domain";
 
+function digits(value: unknown) {
+  return String(value ?? "").replace(/\D/g, "");
+}
+
+function readBody(rawMessage: any) {
+  return (
+    rawMessage?.body ??
+    rawMessage?.message?.conversation ??
+    rawMessage?.message?.extendedTextMessage?.text ??
+    rawMessage?.message?.imageMessage?.caption ??
+    rawMessage?.message?.videoMessage?.caption ??
+    rawMessage?.text ??
+    null
+  );
+}
+
+function normalizeInboundPayload(rawPayload: any): N8nInboundPayload {
+  const data = rawPayload?.data ?? rawPayload?.message?.raw?.data ?? {};
+  const key = data?.key ?? rawPayload?.key ?? rawPayload?.message?.raw?.key ?? {};
+  const rawMessage = rawPayload?.message ?? data;
+  const remoteJid =
+    rawPayload?.conversation?.remote_jid ??
+    rawPayload?.conversation?.external_id ??
+    rawPayload?.remote_jid ??
+    rawPayload?.remoteJid ??
+    rawPayload?.jid ??
+    rawPayload?.meta?.remote_jid ??
+    rawPayload?.meta?.jid ??
+    rawMessage?.raw?.remote_jid ??
+    rawMessage?.raw?.key?.remoteJid ??
+    data?.remoteJid ??
+    key?.remoteJid ??
+    null;
+  const phone =
+    rawPayload?.contact?.phone ??
+    rawPayload?.phone ??
+    rawPayload?.contact_phone ??
+    data?.sender ??
+    (remoteJid && !String(remoteJid).endsWith("@lid") ? digits(remoteJid) : undefined);
+  const pushName =
+    rawPayload?.contact?.pushName ??
+    rawPayload?.contact?.push_name ??
+    rawPayload?.contact?.display_name ??
+    rawPayload?.contact?.name ??
+    rawPayload?.pushName ??
+    data?.pushName ??
+    null;
+  const fromMe = Boolean(key?.fromMe ?? data?.fromMe ?? rawPayload?.fromMe);
+  const timestamp = rawPayload?.message?.created_at ?? data?.messageTimestamp ?? rawPayload?.messageTimestamp;
+  const createdAt = typeof timestamp === "number"
+    ? new Date(timestamp > 9999999999 ? timestamp : timestamp * 1000).toISOString()
+    : timestamp;
+
+  return {
+    ...rawPayload,
+    event_type: rawPayload?.event_type ?? rawPayload?.event ?? "n8n_inbound_received",
+    contact: {
+      ...(rawPayload?.contact ?? {}),
+      phone,
+      name: rawPayload?.contact?.name ?? pushName ?? undefined,
+      display_name: rawPayload?.contact?.display_name ?? pushName ?? undefined,
+      pushName: rawPayload?.contact?.pushName ?? pushName ?? undefined,
+      lid: rawPayload?.contact?.lid ?? (String(remoteJid ?? "").endsWith("@lid") ? remoteJid : undefined),
+    },
+    conversation: {
+      ...(rawPayload?.conversation ?? {}),
+      remote_jid: remoteJid ?? rawPayload?.conversation?.remote_jid,
+      external_id: rawPayload?.conversation?.external_id ?? remoteJid ?? undefined,
+    },
+    message: {
+      ...(rawPayload?.message ?? {}),
+      direction: rawPayload?.message?.direction ?? (fromMe ? "outbound" : "inbound"),
+      sender_type: rawPayload?.message?.sender_type ?? (fromMe ? "human" : "client"),
+      body: rawPayload?.message?.body ?? readBody(rawMessage),
+      message_type: rawPayload?.message?.message_type ?? (data?.messageType || "text"),
+      provider_message_id: rawPayload?.message?.provider_message_id ?? key?.id ?? data?.id ?? undefined,
+      created_at: createdAt ?? rawPayload?.message?.created_at,
+      raw: { ...(rawPayload?.message?.raw ?? {}), ...data, remote_jid: remoteJid, key },
+    },
+    meta: {
+      ...(rawPayload?.meta ?? {}),
+      provider: rawPayload?.meta?.provider ?? "evolution",
+      instance: rawPayload?.meta?.instance ?? rawPayload?.instance ?? data?.instanceId,
+      remote_jid: rawPayload?.meta?.remote_jid ?? remoteJid,
+    },
+  } as N8nInboundPayload;
+}
+
 /**
  * Writes inbound n8n payloads into the GS Gesso schema (gs_whatsapp_*).
  * RLS is bypassed because we use the service-role client.
  */
 export async function handleN8nInboundPayloadAdmin(
-  payload: N8nInboundPayload,
+  rawPayload: N8nInboundPayload,
 ): Promise<InboundResult> {
+  const payload = normalizeInboundPayload(rawPayload);
   if (!payload?.contact) throw new Error("contact required");
   if (!payload?.message?.direction || !payload?.message?.sender_type) {
     throw new Error("message.direction and message.sender_type required");
