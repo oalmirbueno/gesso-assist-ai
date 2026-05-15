@@ -548,8 +548,8 @@ export async function handleN8nInboundPayloadAdmin(
     // Defensive guard: skip empty payloads (no body, no transcript, no audio, no media).
     // Prevents incomplete backfills from polluting the inbox with "sem texto" rows.
     const hasContent =
-      Boolean(String(messageRow.body ?? "").trim()) ||
-      Boolean(String(messageRow.transcript ?? "").trim()) ||
+      hasText(messageRow.body) ||
+      hasText(messageRow.transcript) ||
       Boolean(messageRow.audio_url) ||
       Boolean((messageRow.media as any)?.url);
     if (!hasContent) {
@@ -561,6 +561,19 @@ export async function handleN8nInboundPayloadAdmin(
     }
 
     if (messageRow.provider_message_id) {
+      const { data: existingMessage, error: existingMessageError } = await supabaseAdmin
+        .from("gs_whatsapp_messages")
+        .select("id, body, transcript, audio_url, media, raw, conversation_id, contact_id")
+        .eq("provider_message_id", messageRow.provider_message_id)
+        .maybeSingle();
+      if (existingMessageError) throw existingMessageError;
+      if (existingMessage) {
+        messageRow.body = hasText(messageRow.body) ? messageRow.body : existingMessage.body;
+        messageRow.transcript = hasText(messageRow.transcript) ? messageRow.transcript : existingMessage.transcript;
+        messageRow.audio_url = messageRow.audio_url ?? existingMessage.audio_url;
+        messageRow.media = { ...((existingMessage.media as any) ?? {}), ...((messageRow.media as any) ?? {}) };
+        messageRow.raw = { ...((existingMessage.raw as any) ?? {}), ...((messageRow.raw as any) ?? {}) };
+      }
       const { data, error } = await supabaseAdmin
         .from("gs_whatsapp_messages")
         .upsert(messageRow, { onConflict: "provider_message_id" })
