@@ -222,7 +222,7 @@ function InboxView() {
 
   const selected = conversations.find((c) => c.id === selectedId) ?? null;
   const selectedMessages = useGsMessages(selectedId);
-  const diagnostics = useGsDiagnostics(selectedId);
+  const diagnostics = useGsDiagnostics();
 
   return (
     <div className="h-full flex flex-col">
