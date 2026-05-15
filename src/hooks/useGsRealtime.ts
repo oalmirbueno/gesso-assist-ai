@@ -126,7 +126,7 @@ export function useGsConversations() {
       .channel(`gs-inbox-${Date.now()}-${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "gs_whatsapp_conversations" }, load)
       .on("postgres_changes", { event: "*", schema: "public", table: "gs_whatsapp_contacts" }, load)
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "gs_whatsapp_messages" }, load)
+      .on("postgres_changes", { event: "*", schema: "public", table: "gs_whatsapp_messages" }, load)
       .subscribe();
     return () => {
       supabase.removeChannel(ch);
@@ -160,7 +160,7 @@ export function useGsMessages(conversationId: string | null) {
       .on(
         "postgres_changes",
         {
-          event: "INSERT",
+          event: "*",
           schema: "public",
           table: "gs_whatsapp_messages",
           filter: `conversation_id=eq.${conversationId}`,
