@@ -98,6 +98,16 @@ function Dashboard() {
         { event: "INSERT", schema: "public", table: "gs_whatsapp_events" },
         () => load(),
       )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "gs_whatsapp_contacts" },
+        () => load(),
+      )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "gs_whatsapp_messages" },
+        () => load(),
+      )
       .subscribe();
     return () => {
       supabase.removeChannel(ch);
