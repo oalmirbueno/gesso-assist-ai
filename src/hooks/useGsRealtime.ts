@@ -52,6 +52,8 @@ export interface GsMessage {
   transcript: string | null;
   intent: string | null;
   ai_reply: string | null;
+  media: any;
+  provider_status: string | null;
   raw?: any;
   confidence: number | null;
   created_at: string;
