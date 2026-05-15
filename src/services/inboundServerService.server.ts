@@ -371,12 +371,19 @@ export async function handleN8nInboundPayloadAdmin(
     if (error) throw error;
     conversation = data;
   } else {
+    // Em phone fallback, preserva o remote_jid original da conversa e registra o jid alterno em raw.jid_aliases.
+    const existingJidAliases: string[] = Array.isArray((conversation.raw as any)?.jid_aliases)
+      ? (conversation.raw as any).jid_aliases
+      : [];
+    const jidAliasSet = new Set(existingJidAliases);
+    if (matchedByPhoneFallback && remoteJid && remoteJid !== conversation.remote_jid) jidAliasSet.add(remoteJid);
+    const effectiveRemoteJid = matchedByPhoneFallback ? conversation.remote_jid : remoteJid;
     const { data, error } = await supabaseAdmin
       .from("gs_whatsapp_conversations")
       .update({
         contact_id: contact.id,
         provider_instance: providerInstance,
-        remote_jid: remoteJid,
+        remote_jid: effectiveRemoteJid,
         status: payload.conversation?.status ?? conversation.status,
         ai_enabled:
           payload.conversation?.ai_enabled ?? conversation.ai_enabled,
@@ -397,7 +404,13 @@ export async function handleN8nInboundPayloadAdmin(
         ai_last_decision:
           aiFields.ai_last_decision ?? conversation.ai_last_decision,
         ai_draft_reply: aiFields.ai_draft_reply ?? conversation.ai_draft_reply,
-        raw: { ...((conversation.raw as any) ?? {}), ...(payload as any), remote_jid: remoteJid, lid_jid: lidJid } as any,
+        raw: {
+          ...((conversation.raw as any) ?? {}),
+          ...(payload as any),
+          remote_jid: effectiveRemoteJid,
+          lid_jid: lidJid ?? (conversation.raw as any)?.lid_jid,
+          jid_aliases: Array.from(jidAliasSet),
+        } as any,
         unread_count: isInbound
           ? (conversation.unread_count ?? 0) + 1
           : conversation.unread_count,
