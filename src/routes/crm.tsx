@@ -6,9 +6,19 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Sheet, SheetContent, SheetHeader, SheetTitle,
+} from "@/components/ui/sheet";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { Phone, MapPin, Search, Plus, Loader2, Inbox } from "lucide-react";
 import { toast } from "sonner";
-import { isProductionWhatsappContact } from "@/lib/whatsappProduction";
 
 export const Route = createFileRoute("/crm")({
   component: CRM,
@@ -22,7 +32,7 @@ type GsContact = {
   neighborhood: string | null;
   interest: string | null;
   stage: string;
-  tags: unknown;
+  tags: any;
   next_action: string | null;
   notes: string | null;
   updated_at: string;
@@ -43,6 +53,11 @@ function CRM() {
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState("");
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [selected, setSelected] = useState<GsContact | null>(null);
+  const [newOpen, setNewOpen] = useState(false);
+  const [form, setForm] = useState({
+    name: "", phone: "", city: "", neighborhood: "", interest: "", stage: "novo", notes: "",
+  });
 
   async function load() {
     setLoading(true);
@@ -52,7 +67,7 @@ function CRM() {
       .order("updated_at", { ascending: false })
       .limit(500);
     if (error) toast.error("Falha ao carregar CRM");
-    setRows(((data as GsContact[]) ?? []).filter(isProductionWhatsappContact));
+    setRows(((data as GsContact[]) ?? []));
     setLoading(false);
   }
 
@@ -60,15 +75,9 @@ function CRM() {
     load();
     const ch = supabase
       .channel("crm-contacts")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "gs_whatsapp_contacts" },
-        () => load(),
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "gs_whatsapp_contacts" }, load)
       .subscribe();
-    return () => {
-      supabase.removeChannel(ch);
-    };
+    return () => { supabase.removeChannel(ch); };
   }, []);
 
   const filtered = useMemo(() => {
@@ -104,6 +113,38 @@ function CRM() {
     }
   }
 
+  async function createContact() {
+    if (!form.phone.trim()) return toast.error("Telefone obrigatório");
+    const phone = form.phone.replace(/\D/g, "");
+    const { error } = await supabase.from("gs_whatsapp_contacts").insert({
+      name: form.name.trim() || null,
+      display_name: form.name.trim() || null,
+      phone,
+      city: form.city.trim() || null,
+      neighborhood: form.neighborhood.trim() || null,
+      interest: form.interest.trim() || null,
+      stage: form.stage,
+      notes: form.notes.trim() || null,
+      source: "manual_panel",
+    });
+    if (error) return toast.error(error.message);
+    toast.success("Contato criado");
+    setNewOpen(false);
+    setForm({ name: "", phone: "", city: "", neighborhood: "", interest: "", stage: "novo", notes: "" });
+    load();
+  }
+
+  async function updateSelected(patch: Partial<GsContact>) {
+    if (!selected) return;
+    setSelected({ ...selected, ...patch });
+    const { error } = await supabase
+      .from("gs_whatsapp_contacts")
+      .update({ ...patch, updated_at: new Date().toISOString() })
+      .eq("id", selected.id);
+    if (error) toast.error(error.message);
+    else load();
+  }
+
   return (
     <AppShell
       title="CRM Kanban"
@@ -119,7 +160,7 @@ function CRM() {
               className="pl-8 w-72"
             />
           </div>
-          <Button size="sm" className="font-semibold">
+          <Button size="sm" className="font-semibold" onClick={() => setNewOpen(true)}>
             <Plus className="h-4 w-4 mr-1" /> Novo contato
           </Button>
         </>
@@ -131,7 +172,7 @@ function CRM() {
             <Loader2 className="h-6 w-6 animate-spin" />
           </div>
         ) : rows.length === 0 ? (
-          <EmptyState />
+          <EmptyState onCreate={() => setNewOpen(true)} />
         ) : (
           <div className="flex gap-4 h-full min-w-max pb-4">
             {STAGES.map((stage) => {
@@ -148,21 +189,15 @@ function CRM() {
                   }}
                   className="w-80 shrink-0 flex flex-col bg-muted/40 rounded-xl border"
                 >
-                  <div
-                    className={`px-4 pt-3 pb-2 border-t-4 rounded-t-xl bg-card ${stage.accent}`}
-                  >
+                  <div className={`px-4 pt-3 pb-2 border-t-4 rounded-t-xl bg-card ${stage.accent}`}>
                     <div className="flex items-center justify-between">
                       <h3 className="font-bold text-sm tracking-tight">{stage.label}</h3>
-                      <Badge variant="secondary" className="text-[11px]">
-                        {items.length}
-                      </Badge>
+                      <Badge variant="secondary" className="text-[11px]">{items.length}</Badge>
                     </div>
                   </div>
                   <div className="flex-1 overflow-y-auto p-3 space-y-2">
                     {items.length === 0 && (
-                      <p className="text-xs text-muted-foreground/70 text-center py-6">
-                        Nenhum contato
-                      </p>
+                      <p className="text-xs text-muted-foreground/70 text-center py-6">Nenhum contato</p>
                     )}
                     {items.map((c) => (
                       <Card
@@ -170,13 +205,12 @@ function CRM() {
                         draggable
                         onDragStart={() => setDraggingId(c.id)}
                         onDragEnd={() => setDraggingId(null)}
-                        className="p-3 cursor-grab active:cursor-grabbing hover:shadow-md hover:border-primary/40 transition"
+                        onClick={() => setSelected(c)}
+                        className="p-3 cursor-pointer hover:shadow-md hover:border-primary/40 transition"
                       >
-                        <div className="flex items-start justify-between gap-2">
-                          <p className="font-semibold text-sm truncate">
-                            {c.display_name ?? c.name ?? "Sem nome"}
-                          </p>
-                        </div>
+                        <p className="font-semibold text-sm truncate">
+                          {c.display_name ?? c.name ?? "Sem nome"}
+                        </p>
                         <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
                           <Phone className="h-3 w-3" /> {c.phone}
                         </p>
@@ -187,18 +221,12 @@ function CRM() {
                           </p>
                         )}
                         {c.interest && (
-                          <p className="text-xs mt-2 text-foreground/80 line-clamp-2">
-                            {c.interest}
-                          </p>
+                          <p className="text-xs mt-2 text-foreground/80 line-clamp-2">{c.interest}</p>
                         )}
                         {Array.isArray(c.tags) && c.tags.length > 0 && (
                           <div className="flex flex-wrap gap-1 mt-2">
                             {(c.tags as string[]).slice(0, 3).map((t) => (
-                              <Badge
-                                key={t}
-                                variant="outline"
-                                className="text-[10px] py-0 px-1.5 border-primary/40 text-foreground"
-                              >
+                              <Badge key={t} variant="outline" className="text-[10px] py-0 px-1.5 border-primary/40 text-foreground">
                                 {t}
                               </Badge>
                             ))}
@@ -213,22 +241,139 @@ function CRM() {
           </div>
         )}
       </div>
+
+      {/* Novo contato */}
+      <Dialog open={newOpen} onOpenChange={setNewOpen}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Novo contato</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Nome</Label>
+                <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
+              </div>
+              <div>
+                <Label>Telefone *</Label>
+                <Input value={form.phone} placeholder="55419..." onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} />
+              </div>
+              <div>
+                <Label>Cidade</Label>
+                <Input value={form.city} onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))} />
+              </div>
+              <div>
+                <Label>Bairro</Label>
+                <Input value={form.neighborhood} onChange={(e) => setForm((f) => ({ ...f, neighborhood: e.target.value }))} />
+              </div>
+            </div>
+            <div>
+              <Label>Interesse</Label>
+              <Input value={form.interest} onChange={(e) => setForm((f) => ({ ...f, interest: e.target.value }))} />
+            </div>
+            <div>
+              <Label>Estágio</Label>
+              <Select value={form.stage} onValueChange={(v) => setForm((f) => ({ ...f, stage: v }))}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {STAGES.map((s) => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Notas</Label>
+              <Textarea rows={3} value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNewOpen(false)}>Cancelar</Button>
+            <Button onClick={createContact}>Criar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Detalhe do contato */}
+      <Sheet open={!!selected} onOpenChange={(v) => !v && setSelected(null)}>
+        <SheetContent className="w-full sm:max-w-md overflow-y-auto">
+          {selected && (
+            <>
+              <SheetHeader>
+                <SheetTitle>{selected.display_name ?? selected.name ?? "Sem nome"}</SheetTitle>
+              </SheetHeader>
+              <div className="space-y-4 mt-4">
+                <div>
+                  <Label>Nome</Label>
+                  <Input
+                    defaultValue={selected.name ?? ""}
+                    onBlur={(e) => e.target.value !== (selected.name ?? "") && updateSelected({ name: e.target.value })}
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label>Telefone</Label>
+                    <Input value={selected.phone} readOnly className="bg-muted" />
+                  </div>
+                  <div>
+                    <Label>Estágio</Label>
+                    <Select value={selected.stage} onValueChange={(v) => updateSelected({ stage: v })}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {STAGES.map((s) => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label>Cidade</Label>
+                    <Input
+                      defaultValue={selected.city ?? ""}
+                      onBlur={(e) => e.target.value !== (selected.city ?? "") && updateSelected({ city: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <Label>Bairro</Label>
+                    <Input
+                      defaultValue={selected.neighborhood ?? ""}
+                      onBlur={(e) => e.target.value !== (selected.neighborhood ?? "") && updateSelected({ neighborhood: e.target.value })}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label>Interesse</Label>
+                  <Input
+                    defaultValue={selected.interest ?? ""}
+                    onBlur={(e) => e.target.value !== (selected.interest ?? "") && updateSelected({ interest: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label>Notas</Label>
+                  <Textarea
+                    rows={4}
+                    defaultValue={selected.notes ?? ""}
+                    onBlur={(e) => e.target.value !== (selected.notes ?? "") && updateSelected({ notes: e.target.value })}
+                  />
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Atualizado em {new Date(selected.updated_at).toLocaleString("pt-BR")}
+                </p>
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
     </AppShell>
   );
 }
 
-function EmptyState() {
+function EmptyState({ onCreate }: { onCreate: () => void }) {
   return (
     <div className="h-full grid place-items-center">
       <div className="text-center max-w-md">
         <div className="mx-auto h-14 w-14 rounded-2xl bg-primary/15 grid place-items-center mb-4">
           <Inbox className="h-7 w-7 text-primary" />
         </div>
-        <h2 className="font-bold text-lg">Nenhum contato sincronizado ainda</h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          O CRM começa a popular automaticamente quando o n8n enviar eventos reais
-          do WhatsApp oficial da GS Gesso para o painel.
+        <h2 className="font-bold text-lg">Nenhum contato ainda</h2>
+        <p className="text-sm text-muted-foreground mt-1 mb-4">
+          O CRM popula automaticamente com leads do WhatsApp. Você também pode adicionar manualmente.
         </p>
+        <Button onClick={onCreate}><Plus className="h-4 w-4 mr-1" /> Novo contato</Button>
       </div>
     </div>
   );

@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { isProductionWhatsappConversation, isProductionWhatsappEvent } from "@/lib/whatsappProduction";
+
 import {
   MessageSquarePlus,
   UserCheck,
@@ -62,7 +62,8 @@ function Dashboard() {
   function commit(convs: unknown[] = [], evts: RecentEvent[] = []) {
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
-    const list = (convs as any[]).filter(isProductionWhatsappConversation);
+    // dados reais sem filtro de teste: dashboard deve refletir o mesmo número do /whatsapp
+    const list = convs as any[];
     setStats({
       novas: list.filter((c) => c.status === "nova").length,
       precisaHumano: list.filter((c) => c.needs_human).length,
@@ -73,7 +74,7 @@ function Dashboard() {
       leadsQuentes: list.filter((c) => c.intent === "compra_quente" || c.needs_human).length,
       iaAtiva: list.filter((c) => c.ai_enabled).length,
     });
-    setEvents(evts.filter(isProductionWhatsappEvent).slice(0, 8));
+    setEvents(evts.slice(0, 8));
   }
 
   async function load() {
