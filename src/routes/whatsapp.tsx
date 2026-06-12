@@ -249,26 +249,112 @@ function InboxView() {
 
   const selected = conversations.find((c) => c.id === selectedId) ?? null;
   const selectedMessagesRaw = useGsMessages(selectedId);
-  const selectedMessages = useMemo(
-    () =>
-      selectedMessagesRaw.filter((m) => {
-        if (m.sender_type === "system") return true;
-        const audioUrl =
-          m.audio_url ||
+  const selectedMessages = useMemo(() => {
+    const base = selectedMessagesRaw.filter((m) => {
+      if (m.sender_type === "system") return true;
+      const audioUrl =
+        m.audio_url ||
+        (m.media as any)?.url ||
+        (m.media as any)?.audio_url ||
+        (m.raw as any)?.message?.audioMessage?.url ||
+        null;
+      return Boolean(
+        (m.body ?? "").toString().trim() ||
+          (m.transcript ?? "").toString().trim() ||
+          audioUrl ||
           (m.media as any)?.url ||
-          (m.media as any)?.audio_url ||
-          (m.raw as any)?.message?.audioMessage?.url ||
-          null;
-        return Boolean(
-          (m.body ?? "").toString().trim() ||
-            (m.transcript ?? "").toString().trim() ||
-            audioUrl ||
-            (m.media as any)?.url ||
-            m.message_type === "audio",
-        );
-      }),
-    [selectedMessagesRaw],
-  );
+          m.message_type === "audio",
+      );
+    });
+
+    // Parse ai_draft_reply / ai_reply, which n8n sometimes stores as a JSON
+    // string ({"body": "..."}) and sometimes as raw text.
+    const extractAiText = (value: unknown): string => {
+      if (!value) return "";
+      if (typeof value !== "string") return "";
+      const trimmed = value.trim();
+      if (!trimmed) return "";
+      if (trimmed.startsWith("{") || trimmed.startsWith("[")) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          return (
+            parsed?.body ??
+            parsed?.text ??
+            parsed?.reply ??
+            parsed?.message ??
+            ""
+          ).toString();
+        } catch {
+          return trimmed;
+        }
+      }
+      return trimmed;
+    };
+
+    // 1) Synthesize an outbound AI bubble right after every inbound message
+    //    that carries an ai_reply (the n8n payload attaches the AI answer
+    //    to the inbound row when it does not POST a separate outbound).
+    const merged: any[] = [];
+    for (const m of base) {
+      merged.push(m);
+      const aiText = extractAiText((m as any).ai_reply);
+      if (aiText && m.direction === "inbound") {
+        merged.push({
+          id: `${m.id}__ai`,
+          conversation_id: m.conversation_id,
+          provider_message_id: null,
+          direction: "outbound",
+          sender_type: "ai",
+          message_type: "text",
+          body: aiText,
+          audio_url: null,
+          transcript: null,
+          intent: m.intent ?? null,
+          ai_reply: null,
+          media: {},
+          provider_status: null,
+          raw: { synthetic: "ai_reply", source_message_id: m.id },
+          confidence: m.confidence ?? null,
+          created_at: m.created_at,
+        });
+      }
+    }
+
+    // 2) If the conversation still has a pending ai_draft_reply that was not
+    //    persisted as a message yet, append it as the last bubble so the
+    //    operator always sees what the AI proposed.
+    const draftText = extractAiText(selected?.ai_draft_reply);
+    if (draftText) {
+      const alreadyShown = merged.some(
+        (m) =>
+          (m.sender_type === "ai" || !["client"].includes(m.sender_type)) &&
+          (m.body ?? "").toString().trim() === draftText,
+      );
+      if (!alreadyShown) {
+        merged.push({
+          id: `${selected?.id ?? "conv"}__draft`,
+          conversation_id: selected?.id,
+          provider_message_id: null,
+          direction: "outbound",
+          sender_type: "ai",
+          message_type: "text",
+          body: draftText,
+          audio_url: null,
+          transcript: null,
+          intent: null,
+          ai_reply: null,
+          media: {},
+          provider_status: "pending",
+          raw: { synthetic: "ai_draft_reply" },
+          confidence: null,
+          created_at: selected?.last_message_at ?? new Date().toISOString(),
+        });
+      }
+    }
+
+    return merged;
+  }, [selectedMessagesRaw, selected?.ai_draft_reply, selected?.id, selected?.last_message_at]);
+
   
 
   useEffect(() => {
