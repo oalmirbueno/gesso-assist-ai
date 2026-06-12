@@ -93,16 +93,20 @@ function Inbox() {
     if (useReal && real) {
       const cs: MockContact[] = real.map((r) => {
         const c = r.contact;
+        const displayName =
+          (c?.display_name ?? c?.name ?? "").toString().trim() ||
+          c?.phone ||
+          "(sem nome)";
         return {
           id: c?.id ?? r.contact_id,
-          name: c?.name ?? "(sem nome)",
+          name: displayName,
           phone: c?.phone ?? "",
           city: c?.city ?? "",
           neighborhood: c?.neighborhood ?? "",
-          customerType: (c?.customer_type ?? "obra") as MockContact["customerType"],
-          interest: "·",
-          stage: (c?.stage ?? "novo") as MockContact["stage"],
-          tags: ((c?.tags as unknown) as string[]) ?? [],
+          customerType: "obra" as MockContact["customerType"],
+          interest: c?.interest ?? "·",
+          stage: ((c?.stage as MockContact["stage"]) ?? "novo"),
+          tags: (Array.isArray(c?.tags) ? (c!.tags as string[]) : []) as string[],
           intentLevel: "media",
           objections: [],
           notes: c?.notes ?? undefined,
@@ -116,11 +120,11 @@ function Inbox() {
         aiEnabled: r.ai_enabled,
         needsHuman: r.needs_human,
         needsHumanReason: r.needs_human_reason ?? undefined,
-        priority: (r.priority as MockConversation["priority"]) ?? "media",
+        priority: ((r.priority as MockConversation["priority"]) ?? "media"),
         lastMessageAt: fmtTime(r.last_message_at),
         unread: r.unread_count ?? 0,
         hasAudio: false,
-        aiSummary: r.ai_summary ?? "",
+        aiSummary: r.summary ?? r.ai_summary ?? "",
       }));
       return { conversations: convs, contacts: cs };
     }
@@ -131,7 +135,7 @@ function Inbox() {
 
   const [selectedId, setSelectedId] = useState<string>("");
   useEffect(() => {
-    if ((!selectedId || !conversations.find((c) => c.id === selectedId)) && conversations[0]) {
+    if (!selectedId && conversations[0]) {
       setSelectedId(conversations[0].id);
     }
   }, [conversations, selectedId]);
@@ -156,17 +160,17 @@ function Inbox() {
 
   const realMsgs = useRealtimeMessages(useReal && selected ? selected.id : null);
   const messages: MockMessage[] = useReal
-    ? realMsgs.map((m) => ({
+    ? (realMsgs.map((m) => ({
         id: m.id,
         conversationId: m.conversation_id,
-        direction: m.direction,
-        senderType: m.sender_type,
+        direction: (m.direction === "outbound" ? "outbound" : "inbound") as MockMessage["direction"],
+        senderType: (m.sender_type as MockMessage["senderType"]) ?? "human",
         body: m.body ?? "",
         messageType: (m.message_type as MockMessage["messageType"]) ?? "text",
         audioUrl: m.audio_url ?? undefined,
         transcript: m.transcript ?? undefined,
         createdAt: fmtTime(m.created_at),
-      }))
+      })) as MockMessage[])
     : selected
       ? mockMessagesByConv[selected.id] ?? []
       : [];
@@ -177,7 +181,7 @@ function Inbox() {
     try {
       if (useReal) {
         await supabase
-          .from("conversations")
+          .from("gs_whatsapp_conversations")
           .update({
             assigned_user_id: user?.id ?? null,
             ai_enabled: false,
@@ -185,7 +189,7 @@ function Inbox() {
             status: "em_atendimento",
           })
           .eq("id", selected.id);
-        await supabase.from("conversation_events").insert({
+        await supabase.from("gs_whatsapp_events").insert({
           conversation_id: selected.id,
           event_type: "human_assumed",
           payload: { user_id: user?.id ?? null } as any,
@@ -206,14 +210,14 @@ function Inbox() {
     try {
       if (useReal) {
         await supabase
-          .from("conversations")
+          .from("gs_whatsapp_conversations")
           .update({
             ai_enabled: true,
             status: "ia_respondendo",
             assigned_user_id: null,
           })
           .eq("id", selected.id);
-        await supabase.from("conversation_events").insert({
+        await supabase.from("gs_whatsapp_events").insert({
           conversation_id: selected.id,
           event_type: "returned_to_ai",
           payload: { user_id: user?.id ?? null } as any,
@@ -242,8 +246,9 @@ function Inbox() {
     setBusy(true);
     try {
       if (useReal) {
-        await supabase.from("messages").insert({
+        await supabase.from("gs_whatsapp_messages").insert({
           conversation_id: selected.id,
+          contact_id: contact.id,
           direction: "outbound",
           sender_type: "human",
           body: draft,
