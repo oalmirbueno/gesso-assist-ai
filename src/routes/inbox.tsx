@@ -181,7 +181,7 @@ function Inbox() {
     try {
       if (useReal) {
         await supabase
-          .from("conversations")
+          .from("gs_whatsapp_conversations")
           .update({
             assigned_user_id: user?.id ?? null,
             ai_enabled: false,
@@ -189,7 +189,7 @@ function Inbox() {
             status: "em_atendimento",
           })
           .eq("id", selected.id);
-        await supabase.from("conversation_events").insert({
+        await supabase.from("gs_whatsapp_events").insert({
           conversation_id: selected.id,
           event_type: "human_assumed",
           payload: { user_id: user?.id ?? null } as any,
@@ -210,14 +210,14 @@ function Inbox() {
     try {
       if (useReal) {
         await supabase
-          .from("conversations")
+          .from("gs_whatsapp_conversations")
           .update({
             ai_enabled: true,
             status: "ia_respondendo",
             assigned_user_id: null,
           })
           .eq("id", selected.id);
-        await supabase.from("conversation_events").insert({
+        await supabase.from("gs_whatsapp_events").insert({
           conversation_id: selected.id,
           event_type: "returned_to_ai",
           payload: { user_id: user?.id ?? null } as any,
@@ -246,8 +246,9 @@ function Inbox() {
     setBusy(true);
     try {
       if (useReal) {
-        await supabase.from("messages").insert({
+        await supabase.from("gs_whatsapp_messages").insert({
           conversation_id: selected.id,
+          contact_id: contact.id,
           direction: "outbound",
           sender_type: "human",
           body: draft,
