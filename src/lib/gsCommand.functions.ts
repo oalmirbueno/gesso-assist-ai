@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { normalizeN8nResult } from "./gsCommand.n8nResult";
 
 /**
  * Conector seguro Painel GS Gesso ↔ n8n.
@@ -51,6 +52,8 @@ type CommandResult = {
   error?: string;
 };
 
+const DEFAULT_N8N_WEBHOOK_BASE = "https://n8n.srv942445.hstgr.cloud/webhook";
+
 export const gsPanelCommand = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => CommandSchema.parse(input))
@@ -59,10 +62,15 @@ export const gsPanelCommand = createServerFn({ method: "POST" })
     const userId = context.userId;
 
     const secret = process.env.N8N_PANEL_SECRET;
+    const n8nWebhookBase = process.env.N8N_WEBHOOK_BASE ?? DEFAULT_N8N_WEBHOOK_BASE;
     const URLS = {
-      ai_control: process.env.N8N_AI_CONTROL_URL,
-      human_outbound: process.env.N8N_HUMAN_OUTBOUND_URL,
-      request_draft: process.env.N8N_REQUEST_DRAFT_URL ?? process.env.N8N_AI_CONTROL_URL,
+      ai_control: process.env.N8N_AI_CONTROL_URL ?? `${n8nWebhookBase}/gs-gesso-ai-control`,
+      human_outbound:
+        process.env.N8N_HUMAN_OUTBOUND_URL ?? `${n8nWebhookBase}/gs-gesso-human-outbound`,
+      request_draft:
+        process.env.N8N_REQUEST_DRAFT_URL ??
+        process.env.N8N_AI_CONTROL_URL ??
+        `${n8nWebhookBase}/gs-gesso-ai-control`,
     };
 
     async function logEvent(
@@ -91,7 +99,10 @@ export const gsPanelCommand = createServerFn({ method: "POST" })
         const txt = await res.text();
         let parsed: any = null;
         try { parsed = txt ? JSON.parse(txt) : null; } catch { parsed = { raw: txt }; }
-        return { ok: res.ok, pending: false as const, status: res.status, body: parsed };
+        return {
+          ...normalizeN8nResult({ httpOk: res.ok, status: res.status, body: parsed }),
+          pending: false as const,
+        };
       } catch (e: any) {
         return { ok: false, pending: false as const, error: e?.message ?? "network error" };
       }
@@ -115,6 +126,10 @@ export const gsPanelCommand = createServerFn({ method: "POST" })
           reason: data.reason ?? "human_assumed",
           user_id: userId,
         });
+        if (!r.ok && !r.pending) {
+          await logEvent("ai_pause_sync_failed", { error: r.error ?? r.body });
+          return { ok: false, command: data.command, error: r.error ?? "n8n rejected" };
+        }
         return { ok: true, command: data.command, pending_connector: r.pending };
       }
 
@@ -133,6 +148,10 @@ export const gsPanelCommand = createServerFn({ method: "POST" })
           conversation_id: data.conversation_id,
           user_id: userId,
         });
+        if (!r.ok && !r.pending) {
+          await logEvent("ai_resume_sync_failed", { error: r.error ?? r.body });
+          return { ok: false, command: data.command, error: r.error ?? "n8n rejected" };
+        }
         return { ok: true, command: data.command, pending_connector: r.pending };
       }
 
@@ -234,6 +253,14 @@ export const gsPanelCommand = createServerFn({ method: "POST" })
           remote_jid: (conv as any).remote_jid ?? null,
           provider_instance: (conv as any).provider_instance ?? null,
           body: data.body,
+          message: {
+            body: data.body,
+            message_type: "text",
+          },
+          sender: {
+            user_id: userId,
+            name: "Painel GS Gesso",
+          },
           user_id: userId,
         });
 
