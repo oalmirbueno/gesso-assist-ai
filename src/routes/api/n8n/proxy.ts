@@ -7,7 +7,7 @@ import { createFileRoute } from "@tanstack/react-router";
  * que no servidor injeta o header `x-n8n-secret` lido de N8N_PANEL_SECRET
  * e despacha para a URL correta do n8n.
  */
-const N8N_BASE = "https://n8n.srv1353465.hstgr.cloud/webhook";
+const N8N_BASE = "https://n8n.srv942445.hstgr.cloud/webhook";
 
 const TARGETS = {
   test_connection: `${N8N_BASE}/gs-gesso-panel-test`,
